@@ -24,6 +24,8 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
     artist: '',
   });
   
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -34,7 +36,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
@@ -47,9 +49,17 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
     
     // If no errors, submit form
     if (!newErrors.title && !newErrors.artist) {
-      addSong(formData);
-      setFormData({ title: '', artist: '', coverUrl: '', songUrl: '' });
-      onClose();
+      setIsSubmitting(true);
+      
+      try {
+        await addSong(formData);
+        setFormData({ title: '', artist: '', coverUrl: '', songUrl: '' });
+        onClose();
+      } catch (error) {
+        console.error('Error submitting form:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
   
@@ -67,6 +77,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
             onClick={onClose}
             className="p-1 rounded-full hover:bg-muted transition-colors"
             aria-label="Close modal"
+            disabled={isSubmitting}
           >
             <X className="h-5 w-5" />
           </button>
@@ -88,6 +99,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
                 errors.title ? "border-destructive" : "border-input"
               )}
               placeholder="Enter song title"
+              disabled={isSubmitting}
             />
             {errors.title && (
               <p className="text-destructive text-xs mt-1">{errors.title}</p>
@@ -109,6 +121,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
                 errors.artist ? "border-destructive" : "border-input"
               )}
               placeholder="Enter artist name"
+              disabled={isSubmitting}
             />
             {errors.artist && (
               <p className="text-destructive text-xs mt-1">{errors.artist}</p>
@@ -127,6 +140,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
               onChange={handleChange}
               className="w-full px-3 py-2 rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
               placeholder="https://open.spotify.com/track/..."
+              disabled={isSubmitting}
             />
           </div>
           
@@ -142,15 +156,20 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
               onChange={handleChange}
               className="w-full px-3 py-2 rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
               placeholder="https://example.com/cover-image.jpg"
+              disabled={isSubmitting}
             />
           </div>
           
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg font-medium shadow-sm hover:opacity-90 transition-all active:scale-[0.98]"
+              className={cn(
+                "w-full bg-primary text-primary-foreground py-2.5 rounded-lg font-medium shadow-sm hover:opacity-90 transition-all",
+                isSubmitting ? "opacity-70 cursor-not-allowed" : "active:scale-[0.98]"
+              )}
+              disabled={isSubmitting}
             >
-              Add to Chart
+              {isSubmitting ? 'Adding...' : 'Add to Chart'}
             </button>
           </div>
         </form>

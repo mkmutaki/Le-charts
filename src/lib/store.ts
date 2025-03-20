@@ -90,6 +90,9 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
+          // Set auth header with currentUser.id to make RLS policy work
+          supabase.auth.setAuth(currentUser.id);
+          
           // Insert song data using the fields we know exist
           const { data, error } = await supabase
             .from('LeSongs')
@@ -104,6 +107,7 @@ export const useSongStore = create<SongState>()(
             .single();
             
           if (error) {
+            console.error('Error adding song:', error);
             throw error;
           }
           
@@ -119,6 +123,7 @@ export const useSongStore = create<SongState>()(
         } catch (error) {
           console.error('Error adding song:', error);
           toast.error('Failed to add song');
+          throw error;
         }
       },
       
@@ -131,6 +136,9 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
+          // Set auth header with currentUser.id to make RLS policy work
+          supabase.auth.setAuth(currentUser.id);
+          
           // Use the stored procedure to handle voting
           const { error } = await supabase
             .rpc('vote_for_song', { 
@@ -161,6 +169,9 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
+          // Set auth header with currentUser.id to make RLS policy work
+          supabase.auth.setAuth(currentUser.id);
+          
           const { error } = await supabase
             .from('LeSongs')
             .delete()
@@ -190,6 +201,9 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
+          // Set auth header with currentUser.id to make RLS policy work
+          supabase.auth.setAuth(currentUser.id);
+          
           // Use the stored procedure to reset all votes
           const { error } = await supabase
             .rpc('reset_all_votes');
@@ -224,6 +238,9 @@ export const useSongStore = create<SongState>()(
         if (!currentUser) return false;
         
         try {
+          // Set auth header with currentUser.id to make RLS policy work
+          supabase.auth.setAuth(currentUser.id);
+          
           const { data, error } = await supabase
             .from('user_roles')
             .select('is_admin')
