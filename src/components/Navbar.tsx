@@ -1,22 +1,24 @@
 
-import { useState } from 'react';
-import { Music, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Music, Plus, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AddSongModal } from './AddSongModal';
+import { useSongStore, toggleAdminMode } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
+  const { currentUser, checkIsAdmin } = useSongStore();
+  const isAdmin = checkIsAdmin();
 
-  // Handle scroll event to change navbar appearance
-  useState(() => {
+  useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  });
+  }, []);
 
   return (
     <>
@@ -36,14 +38,33 @@ export const Navbar = () => {
             </h1>
           </div>
           
-          <button
-            onClick={() => setIsAddSongOpen(true)}
-            className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium shadow-sm hover:opacity-90 transition-all duration-200 active:scale-95"
-            aria-label="Add song"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Song</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Admin mode toggle (development only) */}
+            <button
+              onClick={toggleAdminMode}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                isAdmin 
+                  ? "bg-amber-100 text-amber-800" 
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              {isAdmin ? "Admin Mode" : "User Mode"}
+            </button>
+            
+            {/* Add Song button - only visible to admins */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsAddSongOpen(true)}
+                className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium shadow-sm hover:opacity-90 transition-all duration-200 active:scale-95"
+                aria-label="Add song"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Song</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
       

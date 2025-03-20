@@ -16,6 +16,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
     title: '',
     artist: '',
     coverUrl: '',
+    songUrl: '',
   });
   
   const [errors, setErrors] = useState({
@@ -47,7 +48,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
     // If no errors, submit form
     if (!newErrors.title && !newErrors.artist) {
       addSong(formData);
-      setFormData({ title: '', artist: '', coverUrl: '' });
+      setFormData({ title: '', artist: '', coverUrl: '', songUrl: '' });
       onClose();
     }
   };
@@ -112,6 +113,21 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
             {errors.artist && (
               <p className="text-destructive text-xs mt-1">{errors.artist}</p>
             )}
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="songUrl" className="block text-sm font-medium">
+              Song Link <span className="text-muted-foreground text-xs">(Spotify, Apple Music, etc.)</span>
+            </label>
+            <input
+              type="url"
+              id="songUrl"
+              name="songUrl"
+              value={formData.songUrl}
+              onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              placeholder="https://open.spotify.com/track/..."
+            />
           </div>
           
           <div className="space-y-2">

@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
 import { useSongStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -11,11 +11,13 @@ interface SongCardProps {
 }
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
-  const { upvoteSong } = useSongStore();
+  const { upvoteSong, currentUser } = useSongStore();
   const [isAnimating, setIsAnimating] = useState(false);
   
+  const hasVoted = currentUser && song.votedBy.includes(currentUser.id);
+  
   const handleUpvote = () => {
-    if (isAnimating) return;
+    if (isAnimating || hasVoted) return;
     
     upvoteSong(song.id);
     setIsAnimating(true);
@@ -58,21 +60,37 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
           <p className="text-muted-foreground text-sm md:text-base truncate mt-0.5">
             {song.artist}
           </p>
+          
+          {song.songUrl && (
+            <a 
+              href={song.songUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
+            >
+              Listen <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
         
         {/* Upvote button */}
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleUpvote}
-            className="p-2 rounded-full hover:bg-muted transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30"
+            disabled={hasVoted}
+            className={cn(
+              "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
+              hasVoted ? "cursor-not-allowed" : "hover:bg-muted"
+            )}
             aria-label={`Upvote ${song.title}`}
           >
             <Heart 
               className={cn(
                 "h-5 w-5 md:h-6 md:w-6 transition-colors duration-200",
-                isAnimating ? "text-primary heart-beat" : "text-muted-foreground group-hover:text-primary/80"
+                isAnimating ? "text-primary heart-beat" : 
+                hasVoted ? "text-primary" : "text-muted-foreground group-hover:text-primary/80"
               )} 
-              fill={isAnimating ? "currentColor" : "none"}
+              fill={hasVoted || isAnimating ? "currentColor" : "none"}
             />
           </button>
           <span className="text-xs md:text-sm font-medium">

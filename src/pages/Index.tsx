@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useSongStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
@@ -10,10 +11,11 @@ import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 
 const Index = () => {
-  const { songs, resetVotes } = useSongStore();
+  const { songs, resetVotes, checkIsAdmin } = useSongStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const isAdmin = checkIsAdmin();
   
   // Sort songs by votes (descending)
   const sortedSongs = [...songs].sort((a, b) => b.votes - a.votes);
@@ -61,15 +63,27 @@ const Index = () => {
               </p>
             </div>
             
-            {songs.length > 0 && (
-              <button
-                onClick={handleResetVotes}
-                className="flex items-center gap-1.5 bg-muted text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Reset Votes</span>
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {isAdmin && songs.length > 0 && (
+                <button
+                  onClick={handleResetVotes}
+                  className="flex items-center gap-1.5 bg-muted text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Reset Votes</span>
+                </button>
+              )}
+              
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="flex items-center gap-1.5 bg-muted/50 text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span>Admin</span>
+                </Link>
+              )}
+            </div>
           </div>
           
           {/* Songs list */}
@@ -84,7 +98,7 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <EmptyState onAddClick={() => setIsAddSongOpen(true)} />
+            <EmptyState onAddClick={() => isAdmin ? setIsAddSongOpen(true) : null} />
           )}
         </div>
       </main>
@@ -113,10 +127,12 @@ const Index = () => {
         </svg>
       </button>
       
-      <AddSongModal 
-        isOpen={isAddSongOpen} 
-        onClose={() => setIsAddSongOpen(false)} 
-      />
+      {isAdmin && (
+        <AddSongModal 
+          isOpen={isAddSongOpen} 
+          onClose={() => setIsAddSongOpen(false)} 
+        />
+      )}
     </div>
   );
 };
