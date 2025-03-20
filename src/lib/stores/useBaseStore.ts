@@ -1,0 +1,52 @@
+
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { User } from '../types';
+
+// Create dummy users for development
+export const dummyUser: User = {
+  id: 'user-1',
+  isAdmin: false
+};
+
+export const dummyAdmin: User = {
+  id: 'admin-1',
+  isAdmin: true
+};
+
+// Base state interface with shared properties
+export interface BaseState {
+  currentUser: User | null;
+  isLoading: boolean;
+  setCurrentUser: (user: User | null) => void;
+  checkIsAdmin: () => boolean;
+}
+
+// Create a base store that can be used by other stores
+export const createBaseStore = <T extends BaseState>(
+  config: (set: any, get: any) => T,
+  name: string
+) => {
+  return create<T>()(
+    persist(
+      (set, get) => ({
+        currentUser: dummyUser, // Default user for development
+        isLoading: false,
+        
+        setCurrentUser: (user) => {
+          set({ currentUser: user });
+        },
+        
+        checkIsAdmin: () => {
+          const { currentUser } = get();
+          return currentUser?.isAdmin || false;
+        },
+        
+        ...config(set, get),
+      }),
+      {
+        name: name,
+      }
+    )
+  );
+};
