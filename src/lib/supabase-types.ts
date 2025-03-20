@@ -14,7 +14,7 @@ export type SupabaseSongVote = {
 export const convertSupabaseSong = (song: SupabaseSong): Song => {
   return {
     id: song.id.toString(),
-    title: song.title || song.song_name || '',
+    title: song.song_name || '',
     artist: song.artist || '',
     coverUrl: song.cover_url || '',
     songUrl: song.song_url || '',

@@ -52,11 +52,9 @@ export const useSongStore = create<SongState>()(
             throw songsError;
           }
           
-          // Fetch votes - note we're making a direct call using the REST API
-          // since the song_votes table isn't in the TypeScript schema yet
+          // Fetch votes using the REST API directly
           const { data: votesData, error: votesError } = await supabase
-            .from('song_votes')
-            .select('*');
+            .rpc('get_song_votes');
             
           if (votesError) {
             throw votesError;
@@ -89,11 +87,11 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Insert using the fields we know exist in the database
+          // Insert song data using the fields we know exist
           const { data, error } = await supabase
             .from('LeSongs')
             .insert({
-              title: songData.title,
+              song_name: songData.title,
               artist: songData.artist,
               cover_url: songData.coverUrl,
               song_url: songData.songUrl
@@ -127,20 +125,14 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Direct call to song_votes table using REST API
+          // Use a stored procedure to handle voting
           const { error } = await supabase
-            .from('song_votes')
-            .insert({
-              song_id: parseInt(songId),
-              user_id: currentUser.id
+            .rpc('vote_for_song', { 
+              p_song_id: parseInt(songId),
+              p_user_id: currentUser.id
             });
             
           if (error) {
-            // If error is about constraint, user has already voted
-            if (error.code === '23505') {
-              toast.error('You have already voted for this song');
-              return;
-            }
             throw error;
           }
           
@@ -192,24 +184,12 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // First delete all votes using direct REST API call
-          const { error: votesError } = await supabase
-            .from('song_votes')
-            .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+          // Use a stored procedure to reset all votes
+          const { error } = await supabase
+            .rpc('reset_all_votes');
             
-          if (votesError) {
-            throw votesError;
-          }
-          
-          // Then reset vote counts on songs
-          const { error: songsError } = await supabase
-            .from('LeSongs')
-            .update({ votes: 0 })
-            .neq('id', 0); // Update all
-            
-          if (songsError) {
-            throw songsError;
+          if (error) {
+            throw error;
           }
           
           // Refresh songs
