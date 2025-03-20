@@ -17,6 +17,7 @@ interface SongState {
   checkIsAdmin: () => boolean;
   fetchSongs: () => Promise<void>;
   deleteSong: (songId: string) => Promise<void>;
+  checkAdminStatus: () => Promise<boolean>;
 }
 
 // Create a dummy user for development
@@ -214,6 +215,31 @@ export const useSongStore = create<SongState>()(
       checkIsAdmin: () => {
         const { currentUser } = get();
         return currentUser?.isAdmin || false;
+      },
+      
+      // New function to check admin status from the database
+      checkAdminStatus: async () => {
+        const { currentUser } = get();
+        
+        if (!currentUser) return false;
+        
+        try {
+          const { data, error } = await supabase
+            .from('user_roles')
+            .select('is_admin')
+            .eq('user_id', currentUser.id)
+            .single();
+            
+          if (error) {
+            console.error('Error checking admin status:', error);
+            return false;
+          }
+          
+          return data?.is_admin || false;
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          return false;
+        }
       },
     }),
     {
