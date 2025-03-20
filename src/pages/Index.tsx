@@ -67,7 +67,7 @@ const Index = () => {
                 Top Charts
               </h2>
               <p className="text-muted-foreground mt-2">
-                Vote for your favorite songs
+                Vote for your favorite LeSongs
               </p>
             </div>
             
