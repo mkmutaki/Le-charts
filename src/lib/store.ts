@@ -90,13 +90,7 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Set authorization header with the current user's ID
-          const headers = {
-            Authorization: `Bearer ${currentUser.id}`,
-            "apikey": supabase.supabaseKey
-          };
-          
-          // Insert song data using the fields we know exist
+          // Set auth header by providing auth token to the request
           const { data, error } = await supabase
             .from('LeSongs')
             .insert({
@@ -105,7 +99,7 @@ export const useSongStore = create<SongState>()(
               cover_url: songData.coverUrl,
               song_url: songData.songUrl,
               votes: 0
-            }, { headers })
+            })
             .select()
             .single();
             
@@ -139,18 +133,12 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Set authorization header with the current user's ID
-          const headers = {
-            Authorization: `Bearer ${currentUser.id}`,
-            "apikey": supabase.supabaseKey
-          };
-          
           // Use the stored procedure to handle voting
           const { error } = await supabase
             .rpc('vote_for_song', { 
               p_song_id: parseInt(songId),
               p_user_id: currentUser.id
-            }, { headers });
+            });
             
           if (error) {
             throw error;
@@ -175,15 +163,9 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Set authorization header with the current user's ID
-          const headers = {
-            Authorization: `Bearer ${currentUser.id}`,
-            "apikey": supabase.supabaseKey
-          };
-          
           const { error } = await supabase
             .from('LeSongs')
-            .delete({ headers })
+            .delete()
             .eq('id', parseInt(songId));
             
           if (error) {
@@ -210,15 +192,9 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Set authorization header with the current user's ID
-          const headers = {
-            Authorization: `Bearer ${currentUser.id}`,
-            "apikey": supabase.supabaseKey
-          };
-          
           // Use the stored procedure to reset all votes
           const { error } = await supabase
-            .rpc('reset_all_votes', {}, { headers });
+            .rpc('reset_all_votes');
             
           if (error) {
             throw error;
@@ -250,15 +226,9 @@ export const useSongStore = create<SongState>()(
         if (!currentUser) return false;
         
         try {
-          // Set authorization header with the current user's ID
-          const headers = {
-            Authorization: `Bearer ${currentUser.id}`,
-            "apikey": supabase.supabaseKey
-          };
-          
           const { data, error } = await supabase
             .from('user_roles')
-            .select('is_admin', { headers })
+            .select('is_admin')
             .eq('user_id', currentUser.id)
             .single();
             
