@@ -34,7 +34,7 @@ export const createBaseStore = <T extends BaseState>(
         isLoading: false,
         
         setCurrentUser: (user) => {
-          set({ currentUser: user });
+          set({ currentUser: user } as Partial<T>);
         },
         
         checkIsAdmin: () => {
@@ -43,7 +43,7 @@ export const createBaseStore = <T extends BaseState>(
         },
         
         ...config(set, get),
-      }),
+      } as T),
       {
         name: name,
       }

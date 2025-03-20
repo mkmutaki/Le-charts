@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
-import { useSongStore } from '@/lib/store';
+import { useSongStore, useVotingStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 interface SongCardProps {
@@ -11,7 +11,8 @@ interface SongCardProps {
 }
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
-  const { upvoteSong, currentUser } = useSongStore();
+  const { currentUser } = useSongStore();
+  const { upvoteSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   

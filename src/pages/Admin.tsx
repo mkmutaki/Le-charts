@@ -1,15 +1,15 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useSongStore } from '@/lib/store';
+import { useSongStore, useVotingStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AddSongModal } from '@/components/AddSongModal';
 import { cn } from '@/lib/utils';
 
 const Admin = () => {
-  const { songs, resetVotes, checkIsAdmin, fetchSongs, deleteSong } = useSongStore();
+  const { songs, checkIsAdmin, fetchSongs, deleteSong } = useSongStore();
+  const { resetVotes } = useVotingStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const isAdmin = checkIsAdmin();
@@ -23,7 +23,6 @@ const Admin = () => {
     loadSongs();
   }, [fetchSongs]);
   
-  // Redirect non-admin users or handle this differently based on your auth setup
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -125,7 +124,6 @@ const Admin = () => {
   );
 };
 
-// A sub-component for displaying an individual song in the admin view
 const AdminSongRow = ({ song, onDelete }: { song: Song, onDelete: () => void }) => {
   return (
     <div className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
