@@ -11,20 +11,29 @@ import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 
 const Index = () => {
-  const { songs, resetVotes, checkIsAdmin } = useSongStore();
+  const { songs, resetVotes, checkIsAdmin, fetchSongs } = useSongStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const isAdmin = checkIsAdmin();
   
   // Sort songs by votes (descending)
   const sortedSongs = [...songs].sort((a, b) => b.votes - a.votes);
   
   useEffect(() => {
-    // Set page as loaded after a short delay to allow for animation
-    const timer = setTimeout(() => {
-      setIsPageLoaded(true);
-    }, 300);
+    // Load songs when the component mounts
+    const loadData = async () => {
+      await fetchSongs();
+      setIsLoading(false);
+      
+      // Set page as loaded after a short delay to allow for animation
+      setTimeout(() => {
+        setIsPageLoaded(true);
+      }, 300);
+    };
+    
+    loadData();
     
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 100);
@@ -33,10 +42,9 @@ const Index = () => {
     window.addEventListener('scroll', handleScroll);
     
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [fetchSongs]);
   
   const handleResetVotes = () => {
     if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
@@ -87,7 +95,11 @@ const Index = () => {
           </div>
           
           {/* Songs list */}
-          {sortedSongs.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : sortedSongs.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
               {sortedSongs.map((song, index) => (
                 <SongCard 

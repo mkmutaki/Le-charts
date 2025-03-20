@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
 import { useSongStore } from '@/lib/store';
@@ -13,14 +13,22 @@ interface SongCardProps {
 export const SongCard = ({ song, rank }: SongCardProps) => {
   const { upvoteSong, currentUser } = useSongStore();
   const [isAnimating, setIsAnimating] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
   
-  const hasVoted = currentUser && song.votedBy.includes(currentUser.id);
+  useEffect(() => {
+    // Check if current user has voted for this song
+    if (currentUser && song.votedBy.includes(currentUser.id)) {
+      setHasVoted(true);
+    } else {
+      setHasVoted(false);
+    }
+  }, [currentUser, song.votedBy]);
   
-  const handleUpvote = () => {
+  const handleUpvote = async () => {
     if (isAnimating || hasVoted) return;
     
-    upvoteSong(song.id);
     setIsAnimating(true);
+    await upvoteSong(song.id);
     
     setTimeout(() => {
       setIsAnimating(false);

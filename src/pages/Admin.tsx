@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -9,9 +9,19 @@ import { AddSongModal } from '@/components/AddSongModal';
 import { cn } from '@/lib/utils';
 
 const Admin = () => {
-  const { songs, resetVotes, checkIsAdmin } = useSongStore();
+  const { songs, resetVotes, checkIsAdmin, fetchSongs, deleteSong } = useSongStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const isAdmin = checkIsAdmin();
+  
+  useEffect(() => {
+    const loadSongs = async () => {
+      await fetchSongs();
+      setIsLoading(false);
+    };
+    
+    loadSongs();
+  }, [fetchSongs]);
   
   // Redirect non-admin users or handle this differently based on your auth setup
   if (!isAdmin) {
@@ -35,6 +45,12 @@ const Admin = () => {
   const handleResetVotes = () => {
     if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
       resetVotes();
+    }
+  };
+
+  const handleDeleteSong = (songId: string) => {
+    if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
+      deleteSong(songId);
     }
   };
   
@@ -80,13 +96,21 @@ const Admin = () => {
           </div>
           
           <div className="divide-y">
-            {songs.length === 0 ? (
+            {isLoading ? (
+              <div className="p-8 text-center text-muted-foreground">
+                Loading songs...
+              </div>
+            ) : songs.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 No songs have been added yet.
               </div>
             ) : (
               songs.map((song) => (
-                <AdminSongRow key={song.id} song={song} />
+                <AdminSongRow 
+                  key={song.id} 
+                  song={song} 
+                  onDelete={() => handleDeleteSong(song.id)} 
+                />
               ))
             )}
           </div>
@@ -102,7 +126,7 @@ const Admin = () => {
 };
 
 // A sub-component for displaying an individual song in the admin view
-const AdminSongRow = ({ song }: { song: Song }) => {
+const AdminSongRow = ({ song, onDelete }: { song: Song, onDelete: () => void }) => {
   return (
     <div className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
       <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
@@ -138,6 +162,7 @@ const AdminSongRow = ({ song }: { song: Song }) => {
       </div>
       
       <button 
+        onClick={onDelete}
         className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-muted"
         aria-label={`Delete ${song.title}`}
       >
