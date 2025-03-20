@@ -24,7 +24,7 @@ export interface BaseState {
 
 // Create a base store that can be used by other stores
 export const createBaseStore = <T extends BaseState>(
-  config: (set: any, get: any) => T,
+  config: (set: any, get: any) => Omit<T, keyof BaseState>,
   name: string
 ) => {
   return create<T>()(

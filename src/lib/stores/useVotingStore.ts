@@ -2,7 +2,6 @@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
-import { useSongStore } from './useSongStore';
 
 interface VotingState extends BaseState {
   upvoteSong: (songId: string) => Promise<void>;
@@ -13,7 +12,6 @@ export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
     upvoteSong: async (songId: string) => {
       const { currentUser } = get();
-      const { fetchSongs } = useSongStore.getState();
       
       if (!currentUser) {
         toast.error('You need to be logged in to vote');
@@ -32,9 +30,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           throw error;
         }
         
-        // Refresh songs to get updated vote counts
-        await fetchSongs();
-        
+        // We'll let the SupabaseListener handle the data refresh
         toast.success('Vote counted!');
       } catch (error) {
         console.error('Error voting for song:', error);
@@ -44,7 +40,6 @@ export const useVotingStore = createBaseStore<VotingState>(
     
     resetVotes: async () => {
       const { currentUser } = get();
-      const { fetchSongs } = useSongStore.getState();
       
       if (!currentUser?.isAdmin) {
         toast.error('Only admins can reset votes');
@@ -60,9 +55,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           throw error;
         }
         
-        // Refresh songs
-        await fetchSongs();
-        
+        // We'll let the SupabaseListener handle the data refresh
         toast.info('All votes have been reset');
       } catch (error) {
         console.error('Error resetting votes:', error);

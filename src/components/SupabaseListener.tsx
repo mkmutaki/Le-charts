@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSongStore } from '@/lib/store';
 
 export const SupabaseListener = () => {
-  const { fetchSongs } = useSongStore();
+  const fetchSongs = useSongStore.getState().fetchSongs;
   
   useEffect(() => {
     // Set up realtime subscription to refresh data when changes occur

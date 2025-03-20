@@ -1,36 +1,13 @@
 
-import { useAuthStore, toggleAdminMode } from './stores/useAuthStore';
-import { useSongStore } from './stores/useSongStore';
-import { useVotingStore } from './stores/useVotingStore';
+// Import and re-export all store hooks
+import { useAuthStore as authStore, toggleAdminMode } from './stores/useAuthStore';
+import { useSongStore as songStore } from './stores/useSongStore';
+import { useVotingStore as voteStore } from './stores/useVotingStore';
 
-// Create a proxy store that combines all other stores
-// This ensures backward compatibility with existing code
-export const useSongStore = {
-  getState: () => {
-    const authState = useAuthStore.getState();
-    const songState = useSongStore.getState();
-    const votingState = useVotingStore.getState();
-    
-    return {
-      ...authState,
-      ...songState,
-      ...votingState,
-    };
-  },
-  subscribe: (callback: (state: any) => void) => {
-    // Combine subscribers from all stores
-    const unsubAuth = useAuthStore.subscribe(callback);
-    const unsubSongs = useSongStore.subscribe(callback);
-    const unsubVoting = useVotingStore.subscribe(callback);
-    
-    // Return a function that unsubscribes from all stores
-    return () => {
-      unsubAuth();
-      unsubSongs();
-      unsubVoting();
-    };
-  },
-};
+// Export store hooks with consistent names
+export const useAuthStore = authStore;
+export const useSongStore = songStore;
+export const useVotingStore = voteStore;
 
-// Re-export the toggleAdminMode function for backward compatibility
+// Re-export the toggleAdminMode function
 export { toggleAdminMode };
