@@ -11,28 +11,86 @@ export type Database = {
     Tables: {
       LeSongs: {
         Row: {
+          artist: string | null
+          cover_url: string | null
           created_at: string
           id: number
           song_name: string | null
+          song_url: string | null
+          votes: number | null
         }
         Insert: {
+          artist?: string | null
+          cover_url?: string | null
           created_at?: string
           id?: number
           song_name?: string | null
+          song_url?: string | null
+          votes?: number | null
         }
         Update: {
+          artist?: string | null
+          cover_url?: string | null
           created_at?: string
           id?: number
           song_name?: string | null
+          song_url?: string | null
+          votes?: number | null
         }
         Relationships: []
+      }
+      song_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          song_id: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          song_id?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          song_id?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_votes_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "LeSongs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_song_votes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          song_id: number
+          user_id: string
+        }[]
+      }
+      reset_all_votes: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      vote_for_song: {
+        Args: {
+          p_song_id: number
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

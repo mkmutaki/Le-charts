@@ -52,7 +52,7 @@ export const useSongStore = create<SongState>()(
             throw songsError;
           }
           
-          // Fetch votes using the REST API directly
+          // Fetch votes using the RPC function
           const { data: votesData, error: votesError } = await supabase
             .rpc('get_song_votes');
             
@@ -65,8 +65,10 @@ export const useSongStore = create<SongState>()(
             const songObj = convertSupabaseSong(song);
             // Add votedBy information from votes
             songObj.votedBy = votesData
-              .filter(vote => vote.song_id === song.id)
-              .map(vote => vote.user_id);
+              ? votesData
+                  .filter(vote => vote.song_id === parseInt(song.id.toString()))
+                  .map(vote => vote.user_id)
+              : [];
             return songObj;
           });
           
@@ -94,7 +96,8 @@ export const useSongStore = create<SongState>()(
               song_name: songData.title,
               artist: songData.artist,
               cover_url: songData.coverUrl,
-              song_url: songData.songUrl
+              song_url: songData.songUrl,
+              votes: 0
             })
             .select()
             .single();
@@ -103,13 +106,15 @@ export const useSongStore = create<SongState>()(
             throw error;
           }
           
-          const newSong = convertSupabaseSong(data);
-          
-          set((state) => ({ 
-            songs: [...state.songs, newSong] 
-          }));
-          
-          toast.success('Song added to the chart!');
+          if (data) {
+            const newSong = convertSupabaseSong(data);
+            
+            set((state) => ({ 
+              songs: [...state.songs, newSong] 
+            }));
+            
+            toast.success('Song added to the chart!');
+          }
         } catch (error) {
           console.error('Error adding song:', error);
           toast.error('Failed to add song');
@@ -125,7 +130,7 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Use a stored procedure to handle voting
+          // Use the stored procedure to handle voting
           const { error } = await supabase
             .rpc('vote_for_song', { 
               p_song_id: parseInt(songId),
@@ -184,7 +189,7 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Use a stored procedure to reset all votes
+          // Use the stored procedure to reset all votes
           const { error } = await supabase
             .rpc('reset_all_votes');
             
