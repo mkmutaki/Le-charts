@@ -53,10 +53,12 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
       
       try {
         await addSong(formData);
+        // Reset form on success
         setFormData({ title: '', artist: '', coverUrl: '', songUrl: '' });
         onClose();
       } catch (error) {
         console.error('Error submitting form:', error);
+        // Form stays open so user can fix issues
       } finally {
         setIsSubmitting(false);
       }

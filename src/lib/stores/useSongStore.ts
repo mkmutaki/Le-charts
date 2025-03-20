@@ -67,13 +67,16 @@ export const useSongStore = createBaseStore<SongState>(
       }
       
       try {
+        console.log('Adding song with data:', songData);
+        console.log('Current user:', currentUser);
+        
         const { data, error } = await supabase
           .from('LeSongs')
           .insert({
             song_name: songData.title,
             artist: songData.artist,
-            cover_url: songData.coverUrl,
-            song_url: songData.songUrl,
+            cover_url: songData.coverUrl || null,
+            song_url: songData.songUrl || null,
             votes: 0
           })
           .select()
@@ -86,16 +89,18 @@ export const useSongStore = createBaseStore<SongState>(
         
         if (data) {
           const newSong = convertSupabaseSong(data);
+          newSong.votedBy = []; // Initialize empty votedBy array for new song
           
           set((state) => ({ 
             songs: [...state.songs, newSong] 
           }));
           
           toast.success('Song added to the chart!');
+          return;
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error adding song:', error);
-        toast.error('Failed to add song');
+        toast.error(`Failed to add song: ${error.message || 'Unknown error'}`);
         throw error;
       }
     },
