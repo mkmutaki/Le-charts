@@ -52,7 +52,8 @@ export const useSongStore = create<SongState>()(
             throw songsError;
           }
           
-          // Fetch votes
+          // Fetch votes - note we're making a direct call using the REST API
+          // since the song_votes table isn't in the TypeScript schema yet
           const { data: votesData, error: votesError } = await supabase
             .from('song_votes')
             .select('*');
@@ -88,6 +89,7 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
+          // Insert using the fields we know exist in the database
           const { data, error } = await supabase
             .from('LeSongs')
             .insert({
@@ -125,7 +127,7 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // Insert a vote - our trigger function will handle toggling the vote
+          // Direct call to song_votes table using REST API
           const { error } = await supabase
             .from('song_votes')
             .insert({
@@ -190,7 +192,7 @@ export const useSongStore = create<SongState>()(
         }
         
         try {
-          // First delete all votes
+          // First delete all votes using direct REST API call
           const { error: votesError } = await supabase
             .from('song_votes')
             .delete()

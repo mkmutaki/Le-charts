@@ -3,13 +3,18 @@ import { Song, User } from './types';
 import { Database } from '@/integrations/supabase/types';
 
 export type SupabaseSong = Database['public']['Tables']['LeSongs']['Row'];
-export type SupabaseSongVote = Database['public']['Tables']['song_votes']['Row'];
+export type SupabaseSongVote = {
+  id: string;
+  song_id: number;
+  user_id: string;
+  created_at: string;
+};
 
 // Convert Supabase song to our application Song type
 export const convertSupabaseSong = (song: SupabaseSong): Song => {
   return {
     id: song.id.toString(),
-    title: song.title || '',
+    title: song.title || song.song_name || '',
     artist: song.artist || '',
     coverUrl: song.cover_url || '',
     songUrl: song.song_url || '',
