@@ -8,6 +8,7 @@ interface VotingState extends BaseState {
   downvoteSong: (songId: string) => Promise<void>;
   resetVotes: () => Promise<void>;
   checkUserVoteCount: () => Promise<number>;
+  getUserVotedSong: () => Promise<string | null>;
   MAX_VOTES_PER_USER: number;
 }
 
@@ -35,6 +36,27 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
     },
     
+    getUserVotedSong: async () => {
+      const { currentUser } = get();
+      
+      if (!currentUser) return null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('song_votes')
+          .select('song_id')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+          
+        if (error) throw error;
+        
+        return data?.song_id?.toString() || null;
+      } catch (error) {
+        console.error('Error getting user voted song:', error);
+        return null;
+      }
+    },
+    
     upvoteSong: async (songId: string) => {
       const { currentUser, MAX_VOTES_PER_USER } = get();
       
@@ -58,7 +80,7 @@ export const useVotingStore = createBaseStore<VotingState>(
         if (existingVotes && existingVotes.length > 0) {
           const existingVote = existingVotes[0];
           
-          // They voted for this exact song, so we just return
+          // They voted for this exact song, so we just return silently
           if (existingVote.song_id === parseInt(songId)) {
             return;
           } else {
@@ -106,13 +128,22 @@ export const useVotingStore = createBaseStore<VotingState>(
           throw voteCheckError;
         }
         
+        // User hasn't voted for this song
         if (!existingVote || existingVote.length === 0) {
-          // User hasn't voted for this song
           toast.error('You haven\'t liked this song yet');
           return;
         }
         
-        // First, get the current song data
+        // Delete the vote record - this triggers the Supabase function to handle vote count
+        const { error: deleteError } = await supabase
+          .from('song_votes')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('song_id', parseInt(songId));
+          
+        if (deleteError) throw deleteError;
+        
+        // Manually update the song vote count to ensure it's decremented
         const { data: songData, error: songError } = await supabase
           .from('LeSongs')
           .select('votes')
@@ -121,7 +152,6 @@ export const useVotingStore = createBaseStore<VotingState>(
           
         if (songError) throw songError;
         
-        // Now we can use the decrement function with the current vote count
         const { error: updateError } = await supabase
           .from('LeSongs')
           .update({ 
@@ -131,15 +161,6 @@ export const useVotingStore = createBaseStore<VotingState>(
           .eq('id', parseInt(songId));
           
         if (updateError) throw updateError;
-        
-        // Delete the vote record
-        const { error: deleteError } = await supabase
-          .from('song_votes')
-          .delete()
-          .eq('user_id', currentUser.id)
-          .eq('song_id', parseInt(songId));
-          
-        if (deleteError) throw deleteError;
         
         toast.success('Vote removed!');
       } catch (error) {

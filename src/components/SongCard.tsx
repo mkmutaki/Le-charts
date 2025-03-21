@@ -12,13 +12,16 @@ interface SongCardProps {
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
   const { currentUser } = useSongStore();
-  const { upvoteSong, downvoteSong, checkUserVoteCount } = useVotingStore();
+  const { upvoteSong, downvoteSong, getUserVotedSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
   const [hasOtherLikedSong, setHasOtherLikedSong] = useState(false);
   
   useEffect(() => {
+    // Update vote count when song changes
+    setVoteCount(song.votes);
+    
     // Check if current user has voted for this song
     if (currentUser && song.votedBy.includes(currentUser.id)) {
       setHasVoted(true);
@@ -27,25 +30,31 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     }
     
     // Check if user has voted for any other song
-    const checkOtherVotes = async () => {
-      if (currentUser && currentUser.id) {
-        // Get all user voted songs
-        const userVotes = await checkUserVoteCount();
+    const checkUserVotes = async () => {
+      if (!currentUser) return;
+      
+      try {
+        const votedSongId = await getUserVotedSong();
         
-        // User has voted for another song if they have votes but not for this song
-        if (userVotes > 0 && !song.votedBy.includes(currentUser.id)) {
-          setHasOtherLikedSong(true);
+        if (votedSongId) {
+          if (votedSongId === song.id) {
+            setHasVoted(true);
+            setHasOtherLikedSong(false);
+          } else {
+            setHasVoted(false);
+            setHasOtherLikedSong(true);
+          }
         } else {
+          setHasVoted(false);
           setHasOtherLikedSong(false);
         }
+      } catch (error) {
+        console.error("Error checking user votes:", error);
       }
     };
     
-    checkOtherVotes();
-    
-    // Update vote count when song changes
-    setVoteCount(song.votes);
-  }, [currentUser, song.votedBy, song.votes, song.id, checkUserVoteCount]);
+    checkUserVotes();
+  }, [currentUser, song, getUserVotedSong]);
   
   const handleVoteClick = async () => {
     if (isAnimating) return;
@@ -57,14 +66,14 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         // Optimistically update UI for unlike
         setVoteCount(prev => Math.max(0, prev - 1));
         setHasVoted(false);
+        setHasOtherLikedSong(false);
         
         // Call API to update vote
         await downvoteSong(song.id);
       } else {
-        // Check if user already liked another song
+        // Don't proceed if user already liked another song
         if (hasOtherLikedSong) {
-          // Show error toast but don't proceed
-          console.log("You can only like one song at a time. Unlike your current liked song first.");
+          setIsAnimating(false);
           return;
         }
         
@@ -77,14 +86,11 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
       }
     } catch (error) {
       // Revert UI if there was an error
-      if (hasVoted) {
-        setVoteCount(prev => prev + 1);
-        setHasVoted(true);
-      } else {
-        setVoteCount(prev => Math.max(0, prev - 1));
-        setHasVoted(false);
-      }
       console.error('Error toggling vote:', error);
+      
+      // Reset to match the original state in case of error
+      setHasVoted(currentUser ? song.votedBy.includes(currentUser.id) : false);
+      setVoteCount(song.votes);
     } finally {
       setTimeout(() => {
         setIsAnimating(false);
