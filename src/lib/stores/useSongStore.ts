@@ -70,7 +70,6 @@ export const useSongStore = createBaseStore<SongState>(
       
       try {
         console.log('Adding song with data:', songData);
-        console.log('Current user:', currentUser);
         
         const { data, error } = await supabase
           .from('LeSongs')

@@ -1,19 +1,29 @@
 
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ShieldAlert } from 'lucide-react';
 
 export const AccessDenied = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="bg-destructive/10 text-destructive p-6 rounded-lg max-w-md text-center">
-        <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-        <p className="mb-4">You don't have permission to access this page.</p>
-        <Link 
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="max-w-md mx-auto text-center space-y-6">
+        <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center text-primary">
+          <ShieldAlert className="h-8 w-8" />
+        </div>
+        
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="text-muted-foreground">
+            You don't have permission to access this page. 
+            Please contact an administrator if you believe this is an error.
+          </p>
+        </div>
+        
+        <Link
           to="/"
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg"
+          className="inline-flex items-center gap-2 text-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
-          Return to Chart
+          <span>Return to homepage</span>
         </Link>
       </div>
     </div>

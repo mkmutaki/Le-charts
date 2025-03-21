@@ -20,8 +20,14 @@ const Admin = () => {
   
   useEffect(() => {
     const loadSongs = async () => {
-      await fetchSongs();
-      setIsLoading(false);
+      setIsLoading(true);
+      try {
+        await fetchSongs();
+      } catch (error) {
+        console.error("Error fetching songs:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     loadSongs();
@@ -69,14 +75,16 @@ const Admin = () => {
         onClose={() => setIsAddSongOpen(false)} 
       />
       
-      <EditSongModal
-        isOpen={isEditSongOpen}
-        onClose={() => {
-          setIsEditSongOpen(false);
-          setSelectedSong(null);
-        }}
-        song={selectedSong}
-      />
+      {selectedSong && (
+        <EditSongModal
+          isOpen={isEditSongOpen}
+          onClose={() => {
+            setIsEditSongOpen(false);
+            setSelectedSong(null);
+          }}
+          song={selectedSong}
+        />
+      )}
     </div>
   );
 };
