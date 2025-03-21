@@ -114,11 +114,23 @@ export const useVotingStore = createBaseStore<VotingState>(
           throw voteCheckError;
         }
         
-        // Remove vote from the song
+        // First, get the current song data
+        const { data: songData, error: songError } = await supabase
+          .from('LeSongs')
+          .select('votes')
+          .eq('id', parseInt(songId))
+          .single();
+          
+        if (songError) throw songError;
+        
+        // Now we can use the decrement function with the current vote count
         const { error: updateError } = await supabase
           .from('LeSongs')
-          .update({ votes: supabase.rpc('decrement', { x: 1 }) })
-          .eq('id', songId);
+          .update({ 
+            votes: Math.max(0, (songData.votes || 0) - 1),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', parseInt(songId));
           
         if (updateError) throw updateError;
         

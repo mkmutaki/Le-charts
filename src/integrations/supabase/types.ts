@@ -94,6 +94,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement: {
+        Args: {
+          x: number
+        }
+        Returns: number
+      }
       get_public_url: {
         Args: {
           bucket: string
