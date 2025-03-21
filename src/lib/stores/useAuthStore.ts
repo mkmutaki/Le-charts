@@ -8,6 +8,7 @@ interface AuthState extends BaseState {
   login: (email: string, password: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   checkAdminStatus: () => Promise<boolean>;
+  checkIsAdmin: () => boolean;
   isLoading: boolean;
 }
 
@@ -76,17 +77,16 @@ export const useAuthStore = createBaseStore<AuthState>(
       }
     },
     
-    // New function to check admin status from the database
+    // Function to check admin status from the database
     checkAdminStatus: async () => {
-      const { currentUser } = get();
-      
-      if (!currentUser) return false;
-      
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) return false;
+        
         const { data, error } = await supabase
           .from('user_roles')
           .select('is_admin')
-          .eq('user_id', currentUser.id)
+          .eq('user_id', authData.user.id)
           .single();
           
         if (error) {
@@ -100,6 +100,12 @@ export const useAuthStore = createBaseStore<AuthState>(
         return false;
       }
     },
+    
+    // Synchronous function to check admin status from store
+    checkIsAdmin: () => {
+      const { currentUser } = get();
+      return currentUser?.isAdmin || false;
+    }
   }),
   'auth-store'
 );

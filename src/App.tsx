@@ -7,20 +7,21 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import { SupabaseListener } from './components/SupabaseListener';
 import { useAuthStore } from './lib/store';
+import { AccessDenied } from './components/admin/AccessDenied';
 
 import './App.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, checkIsAdmin } = useAuthStore();
-  const isAdmin = currentUser && checkIsAdmin();
+  const isAdmin = checkIsAdmin();
   
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
   
   if (!isAdmin) {
-    return <Navigate to="/" replace />;
+    return <AccessDenied />;
   }
   
   return <>{children}</>;
