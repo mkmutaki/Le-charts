@@ -16,14 +16,20 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, checkIsAdmin } = useAuthStore();
   const isAdmin = checkIsAdmin();
   
+  // If no user is logged in, redirect to login page
   if (!currentUser) {
+    console.log('No user logged in, redirecting to login');
     return <Navigate to="/login" replace />;
   }
   
+  // If user is logged in but not an admin, show access denied
   if (!isAdmin) {
+    console.log('User is not admin, showing access denied');
     return <AccessDenied />;
   }
   
+  // User is logged in and is an admin, show the children
+  console.log('User is admin, showing protected content');
   return <>{children}</>;
 };
 

@@ -14,6 +14,7 @@ interface AuthState extends BaseState {
 
 export const useAuthStore = createBaseStore<AuthState>(
   (set, get) => ({
+    currentUser: null, // Initialize with null instead of dummy user
     isLoading: false,
     
     // Login function
@@ -110,7 +111,7 @@ export const useAuthStore = createBaseStore<AuthState>(
   'auth-store'
 );
 
-// For development testing: Function to toggle between admin and regular user
+// For development testing only: Function to toggle between admin and regular user
 export const toggleAdminMode = () => {
   const { currentUser, setCurrentUser } = useAuthStore.getState();
   

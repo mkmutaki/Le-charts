@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/lib/store';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Lock, Mail, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -16,15 +18,23 @@ const Login = () => {
   const navigate = useNavigate();
   const { login, isLoading, currentUser, checkIsAdmin } = useAuthStore();
   
-  // If already logged in and is admin, redirect to admin page
-  if (currentUser && checkIsAdmin()) {
-    navigate('/admin');
-    return null;
-  } else if (currentUser) {
-    // If logged in but not admin, redirect to home
-    navigate('/');
-    return null;
-  }
+  // Check if already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        // If already logged in with admin status, redirect
+        const isAdmin = await useAuthStore.getState().checkAdminStatus();
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,17 +45,23 @@ const Login = () => {
       return;
     }
     
-    const result = await login(email, password);
-    
-    if (!result.error) {
-      // Check if admin status after login
-      if (checkIsAdmin()) {
-        navigate('/admin');
+    try {
+      const result = await login(email, password);
+      
+      if (!result.error) {
+        toast.success('Login successful!');
+        // Check if admin status after login
+        if (checkIsAdmin()) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } else {
-        navigate('/');
+        setError(result.error);
       }
-    } else {
-      setError(result.error);
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An unexpected error occurred during login');
     }
   };
   

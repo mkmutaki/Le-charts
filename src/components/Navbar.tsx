@@ -4,13 +4,12 @@ import { Music, Plus, Shield, LogIn, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { AddSongModal } from './AddSongModal';
-import { useSongStore, useAuthStore } from '@/lib/store';
+import { useAuthStore } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
-  const { currentUser } = useSongStore();
-  const { checkIsAdmin, logout } = useAuthStore();
+  const { currentUser, checkIsAdmin, logout } = useAuthStore();
   const isAdmin = checkIsAdmin();
   const navigate = useNavigate();
 
@@ -27,6 +26,12 @@ export const Navbar = () => {
     await logout();
     navigate('/');
   };
+
+  // Log the current login state for debugging
+  useEffect(() => {
+    console.log('Current user in Navbar:', currentUser);
+    console.log('Is admin:', isAdmin);
+  }, [currentUser, isAdmin]);
 
   return (
     <>
@@ -68,7 +73,7 @@ export const Navbar = () => {
             ) : (
               <Link
                 to="/login"
-                className="flex items-center gap-1.5 bg-muted text-muted-foreground px-3 py-1.5 rounded-full text-xs font-medium hover:bg-muted/80 transition-all"
+                className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-xs font-medium hover:opacity-90 transition-all"
               >
                 <LogIn className="h-3.5 w-3.5" />
                 Login
