@@ -17,6 +17,7 @@ export type Database = {
           id: number
           song_name: string | null
           song_url: string | null
+          updated_at: string | null
           votes: number | null
         }
         Insert: {
@@ -26,6 +27,7 @@ export type Database = {
           id?: number
           song_name?: string | null
           song_url?: string | null
+          updated_at?: string | null
           votes?: number | null
         }
         Update: {
@@ -35,6 +37,7 @@ export type Database = {
           id?: number
           song_name?: string | null
           song_url?: string | null
+          updated_at?: string | null
           votes?: number | null
         }
         Relationships: []
@@ -91,6 +94,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_public_url: {
+        Args: {
+          bucket: string
+          path: string
+        }
+        Returns: string
+      }
       get_song_votes: {
         Args: Record<PropertyKey, never>
         Returns: {

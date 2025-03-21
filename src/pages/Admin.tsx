@@ -1,10 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AddSongModal } from '@/components/AddSongModal';
+import { EditSongModal } from '@/components/EditSongModal';
 import { cn } from '@/lib/utils';
 
 const Admin = () => {
@@ -12,6 +13,8 @@ const Admin = () => {
   const { resetVotes } = useVotingStore();
   const { checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
+  const [isEditSongOpen, setIsEditSongOpen] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isAdmin = checkIsAdmin();
   
@@ -52,6 +55,11 @@ const Admin = () => {
     if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
       deleteSong(songId);
     }
+  };
+  
+  const handleEditSong = (song: Song) => {
+    setSelectedSong(song);
+    setIsEditSongOpen(true);
   };
   
   return (
@@ -109,7 +117,8 @@ const Admin = () => {
                 <AdminSongRow 
                   key={song.id} 
                   song={song} 
-                  onDelete={() => handleDeleteSong(song.id)} 
+                  onDelete={() => handleDeleteSong(song.id)}
+                  onEdit={() => handleEditSong(song)}
                 />
               ))
             )}
@@ -121,11 +130,28 @@ const Admin = () => {
         isOpen={isAddSongOpen} 
         onClose={() => setIsAddSongOpen(false)} 
       />
+      
+      <EditSongModal
+        isOpen={isEditSongOpen}
+        onClose={() => {
+          setIsEditSongOpen(false);
+          setSelectedSong(null);
+        }}
+        song={selectedSong}
+      />
     </div>
   );
 };
 
-const AdminSongRow = ({ song, onDelete }: { song: Song, onDelete: () => void }) => {
+const AdminSongRow = ({ 
+  song, 
+  onDelete, 
+  onEdit 
+}: { 
+  song: Song, 
+  onDelete: () => void,
+  onEdit: () => void
+}) => {
   return (
     <div className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
       <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
@@ -160,13 +186,23 @@ const AdminSongRow = ({ song, onDelete }: { song: Song, onDelete: () => void }) 
         {song.votes} votes
       </div>
       
-      <button 
-        onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-muted"
-        aria-label={`Delete ${song.title}`}
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+      <div className="flex-shrink-0 flex items-center gap-2">
+        <button 
+          onClick={onEdit}
+          className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-muted"
+          aria-label={`Edit ${song.title}`}
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        
+        <button 
+          onClick={onDelete}
+          className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-muted"
+          aria-label={`Delete ${song.title}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 };

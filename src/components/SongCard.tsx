@@ -15,6 +15,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   const { upvoteSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [voteCount, setVoteCount] = useState(song.votes);
   
   useEffect(() => {
     // Check if current user has voted for this song
@@ -23,17 +24,33 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     } else {
       setHasVoted(false);
     }
-  }, [currentUser, song.votedBy]);
+    
+    // Update vote count when song changes
+    setVoteCount(song.votes);
+  }, [currentUser, song.votedBy, song.votes]);
   
   const handleUpvote = async () => {
     if (isAnimating || hasVoted) return;
     
     setIsAnimating(true);
-    await upvoteSong(song.id);
     
-    setTimeout(() => {
-      setIsAnimating(false);
-    }, 800);
+    try {
+      // Optimistically update UI
+      setVoteCount(prev => prev + 1);
+      setHasVoted(true);
+      
+      // Call API to update vote
+      await upvoteSong(song.id);
+    } catch (error) {
+      // Revert UI if there was an error
+      setVoteCount(prev => prev - 1);
+      setHasVoted(false);
+      console.error('Error upvoting song:', error);
+    } finally {
+      setTimeout(() => {
+        setIsAnimating(false);
+      }, 800);
+    }
   };
   
   return (
@@ -103,7 +120,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
             />
           </button>
           <span className="text-xs md:text-sm font-medium">
-            {song.votes}
+            {voteCount}
           </span>
         </div>
       </div>

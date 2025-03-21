@@ -1,18 +1,19 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Upload, Trash } from 'lucide-react';
-import { SongFormData } from '@/lib/types';
+import { Song, SongFormData } from '@/lib/types';
 import { useSongStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
-interface AddSongModalProps {
+interface EditSongModalProps {
   isOpen: boolean;
   onClose: () => void;
+  song: Song | null;
 }
 
-export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
-  const { addSong } = useSongStore();
+export const EditSongModal = ({ isOpen, onClose, song }: EditSongModalProps) => {
+  const { updateSong } = useSongStore();
   const [formData, setFormData] = useState<SongFormData>({
     title: '',
     artist: '',
@@ -27,8 +28,20 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
     title: '',
     artist: '',
   });
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Reset form when song changes
+  useEffect(() => {
+    if (song) {
+      setFormData({
+        title: song.title,
+        artist: song.artist,
+        coverUrl: song.coverUrl || '',
+        songUrl: song.songUrl || '',
+      });
+      setCoverPreview(song.coverUrl || '');
+    }
+  }, [song]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -54,10 +67,13 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
   const removeCoverImage = () => {
     setCoverFile(null);
     setCoverPreview('');
+    setFormData(prev => ({ ...prev, coverUrl: '' }));
   };
   
   const uploadCoverImage = async (): Promise<string | null> => {
-    if (!coverFile) return null;
+    if (!coverFile) {
+      return formData.coverUrl || null;
+    }
     
     setIsUploading(true);
     
@@ -101,13 +117,15 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
     
     setErrors(newErrors);
     
+    if (!song) return;
+    
     // If no errors, submit form
     if (!newErrors.title && !newErrors.artist) {
       setIsSubmitting(true);
       
       try {
-        // Upload cover image if there's one
-        let coverUrl = '';
+        // Upload cover image if there's a new one
+        let coverUrl = formData.coverUrl;
         if (coverFile) {
           const uploadedUrl = await uploadCoverImage();
           if (uploadedUrl) {
@@ -115,19 +133,14 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
           }
         }
         
-        await addSong({
+        await updateSong(song.id, {
           ...formData,
           coverUrl,
         });
         
-        // Reset form on success
-        setFormData({ title: '', artist: '', coverUrl: '', songUrl: '' });
-        setCoverFile(null);
-        setCoverPreview('');
         onClose();
       } catch (error) {
-        console.error('Error submitting form:', error);
-        // Form stays open so user can fix issues
+        console.error('Error updating song:', error);
       } finally {
         setIsSubmitting(false);
       }
@@ -143,7 +156,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-5 border-b">
-          <h2 className="text-xl font-semibold">Add Song</h2>
+          <h2 className="text-xl font-semibold">Edit Song</h2>
           <button 
             onClick={onClose}
             className="p-1 rounded-full hover:bg-muted transition-colors"
@@ -266,7 +279,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
               )}
               disabled={isSubmitting || isUploading}
             >
-              {isSubmitting ? 'Adding...' : isUploading ? 'Uploading...' : 'Add to Chart'}
+              {isSubmitting ? 'Saving...' : isUploading ? 'Uploading...' : 'Save Changes'}
             </button>
           </div>
         </form>

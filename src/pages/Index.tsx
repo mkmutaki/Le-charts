@@ -19,8 +19,8 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const isAdmin = checkIsAdmin();
   
-  // Sort songs by votes (descending)
-  const sortedSongs = [...songs].sort((a, b) => b.votes - a.votes);
+  // Songs are already sorted by votes and then by updated_at in the fetchSongs function
+  const sortedSongs = songs;
   
   useEffect(() => {
     // Load songs when the component mounts

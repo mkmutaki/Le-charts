@@ -9,6 +9,7 @@ interface SongState extends BaseState {
   songs: Song[];
   fetchSongs: () => Promise<void>;
   addSong: (songData: SongFormData) => Promise<void>;
+  updateSong: (songId: string, songData: SongFormData) => Promise<void>;
   deleteSong: (songId: string) => Promise<void>;
 }
 
@@ -24,7 +25,8 @@ export const useSongStore = createBaseStore<SongState>(
         const { data: songsData, error: songsError } = await supabase
           .from('LeSongs')
           .select('*')
-          .order('votes', { ascending: false });
+          .order('votes', { ascending: false })
+          .order('updated_at', { ascending: false });
           
         if (songsError) {
           throw songsError;
@@ -77,7 +79,8 @@ export const useSongStore = createBaseStore<SongState>(
             artist: songData.artist,
             cover_url: songData.coverUrl || null,
             song_url: songData.songUrl || null,
-            votes: 0
+            votes: 0,
+            updated_at: new Date().toISOString()
           })
           .select()
           .single();
@@ -101,6 +104,55 @@ export const useSongStore = createBaseStore<SongState>(
       } catch (error: any) {
         console.error('Error adding song:', error);
         toast.error(`Failed to add song: ${error.message || 'Unknown error'}`);
+        throw error;
+      }
+    },
+    
+    updateSong: async (songId: string, songData: SongFormData) => {
+      const { currentUser } = get();
+      
+      if (!currentUser?.isAdmin) {
+        toast.error('Only admins can update songs');
+        return;
+      }
+      
+      try {
+        // Update the song in the database
+        const { error } = await supabase
+          .from('LeSongs')
+          .update({
+            song_name: songData.title,
+            artist: songData.artist,
+            cover_url: songData.coverUrl || null,
+            song_url: songData.songUrl || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', parseInt(songId));
+          
+        if (error) {
+          throw error;
+        }
+        
+        // Update the song in the local state
+        set((state) => ({
+          songs: state.songs.map(song => 
+            song.id === songId
+              ? { 
+                  ...song, 
+                  title: songData.title,
+                  artist: songData.artist,
+                  coverUrl: songData.coverUrl || '',
+                  songUrl: songData.songUrl || '',
+                  addedAt: new Date() // Update the timestamp
+                }
+              : song
+          )
+        }));
+        
+        toast.success('Song updated successfully');
+      } catch (error) {
+        console.error('Error updating song:', error);
+        toast.error('Failed to update song');
         throw error;
       }
     },
