@@ -40,7 +40,6 @@ export const useAuthStore = createBaseStore<AuthState>(
         
         // Admin status will be set by the auth listener
         set({ isLoading: false });
-        toast.success('Login successful');
         return { error: null };
       } catch (error) {
         console.error('Login error:', error);
@@ -76,20 +75,20 @@ export const useAuthStore = createBaseStore<AuthState>(
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) return false;
         
-        // Query the user_roles table directly instead of using RPC
-        const { data: userRole, error } = await supabase
+        // Query the user_roles table directly
+        const { data, error } = await supabase
           .from('user_roles')
           .select('is_admin')
           .eq('user_id', authData.user.id)
           .single();
           
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
           console.error('Error checking admin status:', error);
           return false;
         }
         
-        console.log('Admin status from database (direct query):', userRole?.is_admin);
-        return userRole?.is_admin || false;
+        console.log('Admin status from database:', data?.is_admin);
+        return data?.is_admin || false;
       } catch (error) {
         console.error('Error checking admin status:', error);
         return false;
@@ -99,7 +98,9 @@ export const useAuthStore = createBaseStore<AuthState>(
     // Synchronous function to check admin status from store
     checkIsAdmin: () => {
       const { currentUser } = get();
-      return currentUser?.isAdmin || false;
+      const isAdmin = currentUser?.isAdmin || false;
+      console.log('Check isAdmin called, returning:', isAdmin, 'for user:', currentUser);
+      return isAdmin;
     }
   }),
   'auth-store'

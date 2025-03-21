@@ -15,6 +15,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser } = useAuthStore();
   const isAdmin = currentUser?.isAdmin || false;
   
+  console.log('ProtectedRoute check - currentUser:', currentUser, 'isAdmin:', isAdmin);
+  
   // If no user is logged in, redirect to login page
   if (!currentUser) {
     console.log('No user logged in, redirecting to login');

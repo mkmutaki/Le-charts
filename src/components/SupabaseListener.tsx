@@ -18,18 +18,18 @@ export const SupabaseListener = () => {
           console.log('Session found, setting user:', session.user.id);
           
           // Check if the user is an admin by querying the user_roles table directly
-          const { data: userRole, error: roleError } = await supabase
+          const { data, error } = await supabase
             .from('user_roles')
             .select('is_admin')
             .eq('user_id', session.user.id)
             .single();
             
-          if (roleError && roleError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-            console.error('Error checking admin status:', roleError);
+          if (error) {
+            console.error('Error checking admin status:', error);
           }
           
-          const isAdmin = userRole?.is_admin || false;
-          console.log('User admin status (direct query):', isAdmin);
+          const isAdmin = data?.is_admin || false;
+          console.log('User admin status:', isAdmin, 'based on data:', data);
           
           const user: User = {
             id: session.user.id,
@@ -58,19 +58,19 @@ export const SupabaseListener = () => {
         try {
           toast.success('Signed in successfully!');
           
-          // Check if the user is an admin by querying the user_roles table directly
-          const { data: userRole, error: roleError } = await supabase
+          // Check if the user is an admin by querying the user_roles table
+          const { data, error } = await supabase
             .from('user_roles')
             .select('is_admin')
             .eq('user_id', session.user.id)
             .single();
             
-          if (roleError && roleError.code !== 'PGRST116') {
-            console.error('Error checking admin status on sign in:', roleError);
+          if (error) {
+            console.error('Error checking admin status on sign in:', error);
           }
           
-          const isAdmin = userRole?.is_admin || false;
-          console.log('User admin status (on sign in):', isAdmin);
+          const isAdmin = data?.is_admin || false;
+          console.log('User admin status on sign in:', isAdmin, 'based on data:', data);
           
           const user: User = {
             id: session.user.id,
