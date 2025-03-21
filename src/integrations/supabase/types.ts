@@ -114,6 +114,12 @@ export type Database = {
           user_id: string
         }[]
       }
+      is_admin: {
+        Args: {
+          user_id: string
+        }
+        Returns: boolean
+      }
       reset_all_votes: {
         Args: Record<PropertyKey, never>
         Returns: undefined

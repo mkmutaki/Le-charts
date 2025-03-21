@@ -1,47 +1,65 @@
 
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useSongStore } from '@/lib/store';
+import { useAuthStore } from '@/lib/store';
+import { User } from '@/lib/types';
 
 export const SupabaseListener = () => {
-  const fetchSongs = useSongStore.getState().fetchSongs;
-  
+  const { setCurrentUser } = useAuthStore();
+
   useEffect(() => {
-    // Set up realtime subscription to refresh data when changes occur
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'LeSongs'
-        },
-        () => {
-          // Refresh songs when any change happens
-          fetchSongs();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'song_votes'
-        },
-        () => {
-          // Refresh songs when votes change
-          fetchSongs();
-        }
-      )
-      .subscribe();
+    // Check for the existing session
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       
-    return () => {
-      // Clean up subscription
-      supabase.removeChannel(channel);
+      if (session?.user) {
+        // Check if the user is an admin
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('is_admin')
+          .eq('user_id', session.user.id)
+          .single();
+          
+        const isAdmin = data?.is_admin || false;
+        
+        const user: User = {
+          id: session.user.id,
+          isAdmin
+        };
+        
+        setCurrentUser(user);
+      }
     };
-  }, [fetchSongs]);
+    
+    initializeAuth();
+    
+    // Listen for authentication changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Check if the user is an admin
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('is_admin')
+          .eq('user_id', session.user.id)
+          .single();
+          
+        const isAdmin = data?.is_admin || false;
+        
+        const user: User = {
+          id: session.user.id,
+          isAdmin
+        };
+        
+        setCurrentUser(user);
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [setCurrentUser]);
   
-  // This is a utility component that doesn't render anything
   return null;
 };

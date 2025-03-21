@@ -5,11 +5,77 @@ import { User } from '../types';
 import { createBaseStore, BaseState, dummyUser, dummyAdmin } from './useBaseStore';
 
 interface AuthState extends BaseState {
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  logout: () => Promise<void>;
   checkAdminStatus: () => Promise<boolean>;
+  isLoading: boolean;
 }
 
 export const useAuthStore = createBaseStore<AuthState>(
   (set, get) => ({
+    isLoading: false,
+    
+    // Login function
+    login: async (email: string, password: string) => {
+      set({ isLoading: true });
+      
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (error) {
+          toast.error(error.message);
+          set({ isLoading: false });
+          return { error: error.message };
+        }
+        
+        if (!data.user) {
+          set({ isLoading: false });
+          return { error: 'No user returned from login' };
+        }
+        
+        // Check if user is admin
+        const isAdmin = await get().checkAdminStatus();
+        
+        // Create user object with admin status
+        const user: User = {
+          id: data.user.id,
+          isAdmin: isAdmin
+        };
+        
+        set({ currentUser: user, isLoading: false });
+        toast.success('Login successful');
+        return { error: null };
+      } catch (error) {
+        console.error('Login error:', error);
+        set({ isLoading: false });
+        return { error: 'An unexpected error occurred' };
+      }
+    },
+    
+    // Logout function
+    logout: async () => {
+      set({ isLoading: true });
+      
+      try {
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          toast.error(error.message);
+        } else {
+          set({ currentUser: null });
+          toast.info('Logged out successfully');
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        toast.error('Error during logout');
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+    
     // New function to check admin status from the database
     checkAdminStatus: async () => {
       const { currentUser } = get();
