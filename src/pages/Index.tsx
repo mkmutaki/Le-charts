@@ -1,65 +1,85 @@
-
 import { useState, useEffect } from 'react';
 import { RefreshCw, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useSongStore, useAuthStore, useVotingStore } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
+import { useSongStore, useVotingStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
-import { AddSongModal } from '@/components/AddSongModal';
+import {AddSongModal} from '@/components/AddSongModal';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 
 const Index = () => {
   const { songs, fetchSongs } = useSongStore();
-  const { checkIsAdmin } = useAuthStore();
   const { resetVotes } = useVotingStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const isAdmin = checkIsAdmin();
-  
+  const [isAdmin, setIsAdmin] = useState(false);
+
   // Songs are already sorted by votes and then by updated_at in the fetchSongs function
   const sortedSongs = songs;
-  
+
   useEffect(() => {
     // Load songs when the component mounts
     const loadData = async () => {
       await fetchSongs();
       setIsLoading(false);
-      
+
       // Set page as loaded after a short delay to allow for animation
       setTimeout(() => {
         setIsPageLoaded(true);
       }, 300);
     };
-    
+
     loadData();
-    
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 100);
     };
-    
+
     window.addEventListener('scroll', handleScroll);
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
   }, [fetchSongs]);
-  
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (data) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      }
+    };
+
+    checkAdminStatus();
+  }, []);
+
   const handleResetVotes = () => {
     if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
       resetVotes();
     }
   };
-  
+
   return (
     <div className={cn(
       "min-h-screen transition-opacity duration-500",
       isPageLoaded ? "opacity-100" : "opacity-0"
     )}>
       <Navbar />
-      
+
       <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">
         <div className="mb-8 md:mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
@@ -71,7 +91,7 @@ const Index = () => {
                 Vote for your favorite LeSongs
               </p>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {isAdmin && songs.length > 0 && (
                 <button
@@ -82,7 +102,7 @@ const Index = () => {
                   <span>Reset Votes</span>
                 </button>
               )}
-              
+
               {isAdmin && (
                 <Link
                   to="/admin"
@@ -94,7 +114,7 @@ const Index = () => {
               )}
             </div>
           </div>
-          
+
           {/* Songs list */}
           {isLoading ? (
             <div className="flex justify-center py-12">
@@ -103,10 +123,10 @@ const Index = () => {
           ) : sortedSongs.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
               {sortedSongs.map((song, index) => (
-                <SongCard 
-                  key={song.id} 
-                  song={song} 
-                  rank={index + 1} 
+                <SongCard
+                  key={song.id}
+                  song={song}
+                  rank={index + 1}
                 />
               ))}
             </div>
@@ -115,7 +135,7 @@ const Index = () => {
           )}
         </div>
       </main>
-      
+
       {/* Back to top button */}
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -125,25 +145,25 @@ const Index = () => {
         )}
         aria-label="Back to top"
       >
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          width="20" 
-          height="20" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="m18 15-6-6-6 6"/>
+          <path d="m18 15-6-6-6 6" />
         </svg>
       </button>
-      
+
       {isAdmin && (
-        <AddSongModal 
-          isOpen={isAddSongOpen} 
-          onClose={() => setIsAddSongOpen(false)} 
+        <AddSongModal
+          isOpen={isAddSongOpen}
+          onClose={() => setIsAddSongOpen(false)}
         />
       )}
     </div>
