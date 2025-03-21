@@ -1,15 +1,16 @@
+
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
 import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useSongStore, useVotingStore } from '@/lib/store';
+import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AddSongModal } from '@/components/AddSongModal';
 import { cn } from '@/lib/utils';
 
 const Admin = () => {
-  const { songs, checkIsAdmin, fetchSongs, deleteSong } = useSongStore();
+  const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
+  const { checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const isAdmin = checkIsAdmin();

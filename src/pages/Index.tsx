@@ -1,9 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
 import { RefreshCw, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useSongStore, useVotingStore } from '@/lib/store';
+import { useSongStore, useAuthStore, useVotingStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
 import { AddSongModal } from '@/components/AddSongModal';
@@ -11,7 +10,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 
 const Index = () => {
-  const { songs, checkIsAdmin, fetchSongs } = useSongStore();
+  const { songs, fetchSongs } = useSongStore();
+  const { checkIsAdmin } = useAuthStore();
   const { resetVotes } = useVotingStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);

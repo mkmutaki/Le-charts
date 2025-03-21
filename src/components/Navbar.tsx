@@ -3,12 +3,13 @@ import { useState, useEffect } from 'react';
 import { Music, Plus, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AddSongModal } from './AddSongModal';
-import { useSongStore, toggleAdminMode } from '@/lib/store';
+import { useSongStore, useAuthStore, toggleAdminMode } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
-  const { currentUser, checkIsAdmin } = useSongStore();
+  const { currentUser } = useSongStore();
+  const { checkIsAdmin } = useAuthStore();
   const isAdmin = checkIsAdmin();
 
   useEffect(() => {
