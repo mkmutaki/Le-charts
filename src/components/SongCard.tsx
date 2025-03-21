@@ -68,8 +68,8 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     } catch (error) {
       // Revert UI if there was an error
       console.error('Error toggling vote:', error);
-      await checkUserVotes();
       setVoteCount(song.votes);
+      await checkUserVotes();
     } finally {
       setTimeout(() => {
         setIsAnimating(false);

@@ -171,6 +171,8 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
+        console.log('Downvoting song:', songId);
+        
         // Check if user has voted for this specific song
         const { data: existingVotes, error: voteCheckError } = await supabase
           .from('song_votes')
@@ -195,7 +197,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           
         if (deleteError) throw deleteError;
         
-        // Update the song's vote count directly rather than using the broken SQL call
+        // Update the song's vote count directly
         const { data: songData, error: getSongError } = await supabase
           .from('LeSongs')
           .select('votes')
