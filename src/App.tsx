@@ -35,45 +35,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  // Use try-catch to prevent rendering errors from breaking the entire app
-  try {
-    return (
-      <BrowserRouter>
-        <SupabaseListener />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route 
-            path="/admin" 
-            element={
-              <ProtectedRoute>
-                <Admin />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster position="top-center" />
-      </BrowserRouter>
-    );
-  } catch (error) {
-    console.error('Critical rendering error:', error);
-    // Provide a fallback UI instead of a white screen
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold text-destructive">Something went wrong</h1>
-          <p className="text-muted-foreground">Please refresh the page to try again</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
-    );
-  }
+  return (
+    <BrowserRouter>
+      <SupabaseListener />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute>
+              <Admin />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster position="top-center" />
+    </BrowserRouter>
+  );
 }
 
 export default App;

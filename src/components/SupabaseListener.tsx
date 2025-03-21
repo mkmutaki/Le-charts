@@ -1,21 +1,27 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/lib/store';
 import { User } from '@/lib/types';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
-  const { setCurrentUser } = useAuthStore();
+  const { setCurrentUser, currentUser } = useAuthStore();
+  const hasInitialized = useRef(false);
+  const previousAuthId = useRef<string | null>(null);
 
   useEffect(() => {
     // Check for the existing session
     const initializeAuth = async () => {
+      if (hasInitialized.current) return;
+      
       try {
+        console.log('Initializing auth session...');
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
           console.log('Session found, setting user:', session.user.id);
+          previousAuthId.current = session.user.id;
           
           // Check if the user is an admin by querying the user_roles table directly
           const { data, error } = await supabase
@@ -43,10 +49,13 @@ export const SupabaseListener = () => {
           console.log('No session found, setting user to null');
           setCurrentUser(null);
         }
+        
+        hasInitialized.current = true;
       } catch (error) {
         console.error('Auth initialization error:', error);
         // Set current user to null on error to prevent infinite loading
         setCurrentUser(null);
+        hasInitialized.current = true;
       }
     };
     
@@ -56,7 +65,10 @@ export const SupabaseListener = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id);
       
-      if (event === 'SIGNED_IN' && session?.user) {
+      // Prevent duplicate events for the same user session
+      if (event === 'SIGNED_IN' && session?.user && previousAuthId.current !== session.user.id) {
+        previousAuthId.current = session.user.id;
+        
         try {
           toast.success('Signed in successfully!');
           
@@ -92,15 +104,19 @@ export const SupabaseListener = () => {
           }
         }
       } else if (event === 'SIGNED_OUT') {
+        previousAuthId.current = null;
         toast.info('Signed out successfully');
         setCurrentUser(null);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user && currentUser?.id === session.user.id) {
+        // Avoid re-checking admin status on token refresh for the same user
+        console.log('Token refreshed for existing user - maintaining current state');
       }
     });
     
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser]);
+  }, [setCurrentUser, currentUser]);
   
   return null;
 };

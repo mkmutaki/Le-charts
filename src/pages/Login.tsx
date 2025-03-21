@@ -8,26 +8,34 @@ import { Label } from '@/components/ui/label';
 import { Lock, Mail, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
   const { login, isLoading, currentUser } = useAuthStore();
   
   // Check if already logged in
   useEffect(() => {
-    if (currentUser) {
-      if (currentUser.isAdmin) {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+    if (currentUser && !isRedirecting) {
+      setIsRedirecting(true);
+      console.log('User is logged in, redirecting to appropriate page', currentUser);
+      
+      // Small delay to ensure consistent navigation
+      setTimeout(() => {
+        if (currentUser.isAdmin) {
+          console.log('Redirecting admin to admin page');
+          navigate('/admin');
+        } else {
+          console.log('Redirecting regular user to home');
+          navigate('/');
+        }
+      }, 100);
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, isRedirecting]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +49,10 @@ const Login = () => {
     try {
       const result = await login(email, password);
       
-      if (!result.error) {
-        toast.success('Login successful!');
-        // Redirection will be handled by the useEffect above
-      } else {
+      if (result.error) {
         setError(result.error);
       }
+      // Redirection will be handled by the useEffect above
     } catch (err) {
       console.error('Login error:', err);
       setError('An unexpected error occurred during login');
@@ -81,7 +87,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10"
-                disabled={isLoading}
+                disabled={isLoading || isRedirecting}
               />
             </div>
           </div>
@@ -97,7 +103,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10"
-                disabled={isLoading}
+                disabled={isLoading || isRedirecting}
               />
             </div>
           </div>
@@ -105,9 +111,9 @@ const Login = () => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
           >
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? 'Logging in...' : isRedirecting ? 'Redirecting...' : 'Login'}
           </Button>
         </form>
         
