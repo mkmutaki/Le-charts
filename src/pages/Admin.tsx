@@ -1,86 +1,116 @@
+
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { EditSongModal } from '@/components/EditSongModal';
+import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
+import { Song } from '@/lib/types';
 import { AddSongModal } from '@/components/AddSongModal';
+import { EditSongModal } from '@/components/EditSongModal';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { SongsList } from '@/components/admin/SongsList';
-import { useSongStore, useVotingStore } from '@/lib/store';
+import { AccessDenied } from '@/components/admin/AccessDenied';
 import { toast } from 'sonner';
-import { Song } from '@/lib/types';
 
 const Admin = () => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isEditSongOpen, setIsEditSongOpen] = useState(false);
-  const [isAddSongOpen, setIsAddSongOpen] = useState(false);
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
+  const { currentUser } = useAuthStore();
+  const [isAddSongOpen, setIsAddSongOpen] = useState(false);
+  const [isEditSongOpen, setIsEditSongOpen] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  
+  // Check admin status directly from currentUser object
+  const isAdmin = currentUser?.isAdmin || false;
+  
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (data) {
-          setIsAdmin(true);
-          setIsLoading(true);
-          try {
-            console.log('Fetching songs for admin page...');
-            await fetchSongs();
-            console.log('Songs fetched successfully:', songs);
-          } catch (error) {
-            console.error("Error fetching songs:", error);
-            toast.error("Failed to fetch songs");
-          } finally {
-            setIsLoading(false);
-          }
-        } else {
-          setIsAdmin(false);
-        }
+    const loadSongs = async () => {
+      setIsLoading(true);
+      try {
+        console.log('Fetching songs for admin page...');
+        await fetchSongs();
+        console.log('Songs fetched successfully:', songs);
+      } catch (error) {
+        console.error("Error fetching songs:", error);
+        toast.error("Failed to fetch songs");
+      } finally {
+        setIsLoading(false);
       }
     };
+    
+    if (isAdmin) {
+      loadSongs();
+    }
+  }, [fetchSongs, isAdmin]);
+  
+  useEffect(() => {
+    console.log("Admin page - Current user:", currentUser);
+    console.log("Admin check:", { isAdmin, currentUser });
+  }, [isAdmin, currentUser]);
+  
+  if (!isAdmin) {
+    return <AccessDenied />;
+  }
 
-    checkAdminStatus();
-  }, [fetchSongs, songs]);
+  const handleResetVotes = async () => {
+    if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
+      try {
+        await resetVotes();
+        toast.success("All votes have been reset");
+        // Refresh the songs list after resetting votes
+        await fetchSongs();
+      } catch (error) {
+        console.error("Error resetting votes:", error);
+        toast.error("Failed to reset votes");
+      }
+    }
+  };
 
+  const handleDeleteSong = async (songId: string) => {
+    if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
+      try {
+        await deleteSong(songId);
+        toast.success("Song deleted successfully");
+      } catch (error) {
+        console.error("Error deleting song:", error);
+        toast.error("Failed to delete song");
+      }
+    }
+  };
+  
+  const handleEditSong = (song: Song) => {
+    setSelectedSong(song);
+    setIsEditSongOpen(true);
+  };
+  
   return (
-    <div>
-      {isAdmin && (
-        <>
-          <AdminHeader
-            onAddSong={() => setIsAddSongOpen(true)}
-            onResetVotes={resetVotes}
-          />
-          <SongsList
-            songs={songs}
-            isLoading={isLoading}
-            onDeleteSong={deleteSong}
-            onEditSong={(song) => {
-              setSelectedSong(song);
-              setIsEditSongOpen(true);
-            }}
-          />
-          {selectedSong && (
-            <EditSongModal
-              isOpen={isEditSongOpen}
-              onClose={() => {
-                setIsEditSongOpen(false);
-                setSelectedSong(null);
-              }}
-              song={selectedSong}
-            />
-          )}
-          <AddSongModal
-            isOpen={isAddSongOpen}
-            onClose={() => setIsAddSongOpen(false)}
-          />
-        </>
+    <div className="min-h-screen bg-background">
+      <AdminHeader 
+        onAddSong={() => setIsAddSongOpen(true)} 
+        onResetVotes={handleResetVotes} 
+      />
+      
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        <SongsList
+          songs={songs}
+          isLoading={isLoading}
+          onDeleteSong={handleDeleteSong}
+          onEditSong={handleEditSong}
+        />
+      </main>
+      
+      <AddSongModal 
+        isOpen={isAddSongOpen} 
+        onClose={() => setIsAddSongOpen(false)} 
+      />
+      
+      {selectedSong && (
+        <EditSongModal
+          isOpen={isEditSongOpen}
+          onClose={() => {
+            setIsEditSongOpen(false);
+            setSelectedSong(null);
+          }}
+          song={selectedSong}
+        />
       )}
     </div>
   );
