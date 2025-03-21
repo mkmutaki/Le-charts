@@ -50,7 +50,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           
         if (error) throw error;
         
-        return data?.song_id?.toString() || null;
+        return data?.song_id ? data.song_id.toString() : null;
       } catch (error) {
         console.error('Error getting user voted song:', error);
         return null;
@@ -66,42 +66,48 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
-        // Check if user already voted for any song
-        const { data: existingVotes, error: voteCheckError } = await supabase
+        // Check if user already voted for this exact song
+        const { data: existingVote, error: checkError } = await supabase
           .from('song_votes')
-          .select('id, song_id')
-          .eq('user_id', currentUser.id);
+          .select('song_id')
+          .eq('user_id', currentUser.id)
+          .eq('song_id', parseInt(songId))
+          .maybeSingle();
           
-        if (voteCheckError) {
-          throw voteCheckError;
-        }
+        if (checkError) throw checkError;
         
-        // User already has votes
-        if (existingVotes && existingVotes.length > 0) {
-          const existingVote = existingVotes[0];
-          
-          // They voted for this exact song, so we just return silently
-          if (existingVote.song_id === parseInt(songId)) {
-            return;
-          } else {
-            // They voted for a different song, need to unlike that one first
-            toast.error('You can only like one song at a time. Unlike your current liked song first.');
-            return;
-          }
+        // User already voted for this song
+        if (existingVote) {
+          toast.info('You already liked this song');
+          return;
         }
         
         // Use the stored procedure to handle voting
-        const { error } = await supabase
-          .rpc('vote_for_song', { 
-            p_song_id: parseInt(songId),
-            p_user_id: currentUser.id
-          });
+        try {
+          const { error } = await supabase
+            .rpc('vote_for_song', { 
+              p_song_id: parseInt(songId),
+              p_user_id: currentUser.id
+            });
+            
+          if (error) {
+            // This is the expected error when trying to vote for multiple songs
+            if (error.message.includes('Cannot vote for a different song')) {
+              toast.error('You can only like one song at a time. Unlike your current liked song first.');
+              return;
+            }
+            throw error;
+          }
           
-        if (error) {
+          toast.success('Vote counted!');
+        } catch (error: any) {
+          // Handle the specific error from our RPC function
+          if (error.message && error.message.includes('Cannot vote for a different song')) {
+            toast.error('You can only like one song at a time. Unlike your current liked song first.');
+            return;
+          }
           throw error;
         }
-        
-        toast.success('Vote counted!');
       } catch (error) {
         console.error('Error voting for song:', error);
         toast.error('Failed to vote for song');
@@ -122,19 +128,18 @@ export const useVotingStore = createBaseStore<VotingState>(
           .from('song_votes')
           .select('id')
           .eq('user_id', currentUser.id)
-          .eq('song_id', parseInt(songId));
+          .eq('song_id', parseInt(songId))
+          .maybeSingle();
           
-        if (voteCheckError) {
-          throw voteCheckError;
-        }
+        if (voteCheckError) throw voteCheckError;
         
         // User hasn't voted for this song
-        if (!existingVote || existingVote.length === 0) {
+        if (!existingVote) {
           toast.error('You haven\'t liked this song yet');
           return;
         }
         
-        // Delete the vote record - this triggers the Supabase function to handle vote count
+        // Delete the vote record - this triggers the database function to handle vote count
         const { error: deleteError } = await supabase
           .from('song_votes')
           .delete()
@@ -142,25 +147,6 @@ export const useVotingStore = createBaseStore<VotingState>(
           .eq('song_id', parseInt(songId));
           
         if (deleteError) throw deleteError;
-        
-        // Manually update the song vote count to ensure it's decremented
-        const { data: songData, error: songError } = await supabase
-          .from('LeSongs')
-          .select('votes')
-          .eq('id', parseInt(songId))
-          .single();
-          
-        if (songError) throw songError;
-        
-        const { error: updateError } = await supabase
-          .from('LeSongs')
-          .update({ 
-            votes: Math.max(0, (songData.votes || 0) - 1),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', parseInt(songId));
-          
-        if (updateError) throw updateError;
         
         toast.success('Vote removed!');
       } catch (error) {
