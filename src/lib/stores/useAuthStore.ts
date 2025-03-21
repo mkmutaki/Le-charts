@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '../types';
-import { createBaseStore, BaseState, dummyUser, dummyAdmin } from './useBaseStore';
+import { createBaseStore, BaseState } from './useBaseStore';
 
 interface AuthState extends BaseState {
   login: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -14,7 +14,7 @@ interface AuthState extends BaseState {
 
 export const useAuthStore = createBaseStore<AuthState>(
   (set, get) => ({
-    currentUser: null, // Initialize with null instead of dummy user
+    currentUser: null,
     isLoading: false,
     
     // Login function
@@ -38,16 +38,8 @@ export const useAuthStore = createBaseStore<AuthState>(
           return { error: 'No user returned from login' };
         }
         
-        // Check if user is admin
-        const isAdmin = await get().checkAdminStatus();
-        
-        // Create user object with admin status
-        const user: User = {
-          id: data.user.id,
-          isAdmin: isAdmin
-        };
-        
-        set({ currentUser: user, isLoading: false });
+        // Admin status will be set by the auth listener
+        set({ isLoading: false });
         toast.success('Login successful');
         return { error: null };
       } catch (error) {
@@ -84,18 +76,17 @@ export const useAuthStore = createBaseStore<AuthState>(
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) return false;
         
+        // Call the is_admin function directly
         const { data, error } = await supabase
-          .from('user_roles')
-          .select('is_admin')
-          .eq('user_id', authData.user.id)
-          .single();
+          .rpc('is_admin', { user_id: authData.user.id });
           
         if (error) {
           console.error('Error checking admin status:', error);
           return false;
         }
         
-        return data?.is_admin || false;
+        console.log('Admin status from database:', data);
+        return data || false;
       } catch (error) {
         console.error('Error checking admin status:', error);
         return false;
@@ -115,11 +106,12 @@ export const useAuthStore = createBaseStore<AuthState>(
 export const toggleAdminMode = () => {
   const { currentUser, setCurrentUser } = useAuthStore.getState();
   
-  if (currentUser?.isAdmin) {
-    setCurrentUser(dummyUser);
-    toast.info('Switched to regular user mode');
-  } else {
-    setCurrentUser(dummyAdmin);
-    toast.info('Switched to admin mode');
-  }
+  if (!currentUser) return;
+  
+  setCurrentUser({
+    ...currentUser,
+    isAdmin: !currentUser.isAdmin
+  });
+  
+  toast.info(currentUser.isAdmin ? 'Switched to regular user mode' : 'Switched to admin mode');
 };

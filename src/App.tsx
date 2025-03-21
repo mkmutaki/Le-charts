@@ -7,7 +7,6 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import { SupabaseListener } from './components/SupabaseListener';
 import { useAuthStore } from './lib/store';
-import { AccessDenied } from './components/admin/AccessDenied';
 
 import './App.css';
 
@@ -22,10 +21,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
   
-  // If user is logged in but not an admin, show access denied
+  // If user is logged in but not an admin, redirect to home
   if (!isAdmin) {
-    console.log('User is not admin, showing access denied');
-    return <AccessDenied />;
+    console.log('User is not admin, redirecting to home');
+    return <Navigate to="/" replace />;
   }
   
   // User is logged in and is an admin, show the children

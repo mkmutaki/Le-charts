@@ -7,11 +7,12 @@ import { EditSongModal } from '@/components/EditSongModal';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { SongsList } from '@/components/admin/SongsList';
 import { AccessDenied } from '@/components/admin/AccessDenied';
+import { toast } from 'sonner';
 
 const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
-  const { checkIsAdmin } = useAuthStore();
+  const { currentUser, checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -25,27 +26,48 @@ const Admin = () => {
         await fetchSongs();
       } catch (error) {
         console.error("Error fetching songs:", error);
+        toast.error("Failed to fetch songs");
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadSongs();
-  }, [fetchSongs]);
+    if (isAdmin) {
+      loadSongs();
+    }
+  }, [fetchSongs, isAdmin]);
+  
+  useEffect(() => {
+    console.log("Admin check:", { isAdmin, currentUser });
+  }, [isAdmin, currentUser]);
   
   if (!isAdmin) {
     return <AccessDenied />;
   }
 
-  const handleResetVotes = () => {
+  const handleResetVotes = async () => {
     if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
-      resetVotes();
+      try {
+        await resetVotes();
+        toast.success("All votes have been reset");
+        // Refresh the songs list after resetting votes
+        await fetchSongs();
+      } catch (error) {
+        console.error("Error resetting votes:", error);
+        toast.error("Failed to reset votes");
+      }
     }
   };
 
-  const handleDeleteSong = (songId: string) => {
+  const handleDeleteSong = async (songId: string) => {
     if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
-      deleteSong(songId);
+      try {
+        await deleteSong(songId);
+        toast.success("Song deleted successfully");
+      } catch (error) {
+        console.error("Error deleting song:", error);
+        toast.error("Failed to delete song");
+      }
     }
   };
   
