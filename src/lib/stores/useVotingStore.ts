@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -43,22 +44,22 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
-        // Check if user already voted for this song
-        const { data: existingVote, error: voteCheckError } = await supabase
+        // Check if user already voted for any song
+        const { data: existingVotes, error: voteCheckError } = await supabase
           .from('song_votes')
           .select('id, song_id')
-          .eq('user_id', currentUser.id)
-          .single();
+          .eq('user_id', currentUser.id);
           
-        if (voteCheckError && voteCheckError.code !== 'PGRST116') {
-          // PGRST116 is the error code for "no rows returned"
+        if (voteCheckError) {
           throw voteCheckError;
         }
         
-        if (existingVote) {
-          // User already voted for some song
+        // User already has votes
+        if (existingVotes && existingVotes.length > 0) {
+          const existingVote = existingVotes[0];
+          
+          // They voted for this exact song, so we just return
           if (existingVote.song_id === parseInt(songId)) {
-            // They voted for this exact song, so we just return
             return;
           } else {
             // They voted for a different song, need to unlike that one first
@@ -94,21 +95,21 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
-        // Check if user already voted for this song
+        // Check if user has voted for this song
         const { data: existingVote, error: voteCheckError } = await supabase
           .from('song_votes')
           .select('id')
           .eq('user_id', currentUser.id)
-          .eq('song_id', parseInt(songId))
-          .single();
+          .eq('song_id', parseInt(songId));
           
         if (voteCheckError) {
-          if (voteCheckError.code === 'PGRST116') {
-            // User hasn't voted for this song
-            toast.error('You haven\'t liked this song yet');
-            return;
-          }
           throw voteCheckError;
+        }
+        
+        if (!existingVote || existingVote.length === 0) {
+          // User hasn't voted for this song
+          toast.error('You haven\'t liked this song yet');
+          return;
         }
         
         // First, get the current song data

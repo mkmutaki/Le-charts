@@ -12,7 +12,7 @@ interface SongCardProps {
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
   const { currentUser } = useSongStore();
-  const { upvoteSong, downvoteSong } = useVotingStore();
+  const { upvoteSong, downvoteSong, checkUserVoteCount } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
@@ -27,17 +27,25 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     }
     
     // Check if user has voted for any other song
-    if (currentUser && currentUser.id) {
-      // Check if any other songs have been liked by this user
-      const hasLikedAnother = song.votedBy.some(voterId => 
-        voterId === currentUser.id && song.id !== song.id
-      );
-      setHasOtherLikedSong(hasLikedAnother);
-    }
+    const checkOtherVotes = async () => {
+      if (currentUser && currentUser.id) {
+        // Get all user voted songs
+        const userVotes = await checkUserVoteCount();
+        
+        // User has voted for another song if they have votes but not for this song
+        if (userVotes > 0 && !song.votedBy.includes(currentUser.id)) {
+          setHasOtherLikedSong(true);
+        } else {
+          setHasOtherLikedSong(false);
+        }
+      }
+    };
+    
+    checkOtherVotes();
     
     // Update vote count when song changes
     setVoteCount(song.votes);
-  }, [currentUser, song.votedBy, song.votes, song.id]);
+  }, [currentUser, song.votedBy, song.votes, song.id, checkUserVoteCount]);
   
   const handleVoteClick = async () => {
     if (isAnimating) return;
@@ -53,15 +61,19 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         // Call API to update vote
         await downvoteSong(song.id);
       } else {
-        // Only proceed if they haven't liked another song
-        if (!hasOtherLikedSong) {
-          // Optimistically update UI for like
-          setVoteCount(prev => prev + 1);
-          setHasVoted(true);
-          
-          // Call API to update vote
-          await upvoteSong(song.id);
+        // Check if user already liked another song
+        if (hasOtherLikedSong) {
+          // Show error toast but don't proceed
+          console.log("You can only like one song at a time. Unlike your current liked song first.");
+          return;
         }
+        
+        // Optimistically update UI for like
+        setVoteCount(prev => prev + 1);
+        setHasVoted(true);
+        
+        // Call API to update vote
+        await upvoteSong(song.id);
       }
     } catch (error) {
       // Revert UI if there was an error
@@ -130,10 +142,10 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleVoteClick}
-            disabled={isAnimating}
+            disabled={isAnimating || (!hasVoted && hasOtherLikedSong)}
             className={cn(
               "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
-              isAnimating ? "cursor-not-allowed" : "hover:bg-muted"
+              (isAnimating || (!hasVoted && hasOtherLikedSong)) ? "cursor-not-allowed" : "hover:bg-muted"
             )}
             aria-label={hasVoted ? `Unlike ${song.title}` : `Like ${song.title}`}
           >
@@ -141,7 +153,8 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
               className={cn(
                 "h-5 w-5 md:h-6 md:w-6 transition-colors duration-200",
                 isAnimating ? "text-primary heart-beat" : 
-                hasVoted ? "text-primary" : "text-muted-foreground group-hover:text-primary/80"
+                hasVoted ? "text-primary" : 
+                hasOtherLikedSong && !hasVoted ? "text-muted-foreground opacity-50" : "text-muted-foreground group-hover:text-primary/80"
               )} 
               fill={hasVoted || isAnimating ? "currentColor" : "none"}
             />
