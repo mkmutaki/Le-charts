@@ -28,10 +28,11 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     
     // Check if user has voted for any other song
     if (currentUser && currentUser.id) {
-      const hasLikedAnotherSong = currentUser.likedSongs?.some(
-        likedSongId => likedSongId !== song.id && song.votedBy.includes(currentUser.id)
+      // Check if any other songs have been liked by this user
+      const hasLikedAnother = song.votedBy.some(voterId => 
+        voterId === currentUser.id && song.id !== song.id
       );
-      setHasOtherLikedSong(hasLikedAnotherSong || false);
+      setHasOtherLikedSong(hasLikedAnother);
     }
     
     // Update vote count when song changes

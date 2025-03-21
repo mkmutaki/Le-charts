@@ -20,4 +20,5 @@ export interface SongFormData {
 export interface User {
   id: string;
   isAdmin: boolean;
+  likedSongs?: string[]; // Add this property to the User interface
 }
