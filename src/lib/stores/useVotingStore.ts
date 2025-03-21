@@ -89,11 +89,25 @@ export const useVotingStore = createBaseStore<VotingState>(
           // If the user has voted for a different song, we need to remove that vote first
           const currentVotedSongId = existingVotes[0].song_id.toString();
           
-          // Unlike the current song first
-          await get().downvoteSong(currentVotedSongId);
+          // Delete the previous vote
+          const { error: deleteError } = await supabase
+            .from('song_votes')
+            .delete()
+            .eq('user_id', currentUser.id)
+            .eq('song_id', parseInt(currentVotedSongId));
+            
+          if (deleteError) throw deleteError;
           
-          // Short delay to ensure the unlike operation completes
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Update the previous song's vote count
+          const { error: updatePrevError } = await supabase
+            .from('LeSongs')
+            .update({ 
+              votes: supabase.rpc('decrement', { x: 1 }),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', parseInt(currentVotedSongId));
+          
+          if (updatePrevError) throw updatePrevError;
         }
         
         // Now add the new vote
@@ -110,7 +124,7 @@ export const useVotingStore = createBaseStore<VotingState>(
         const { error: updateError } = await supabase
           .from('LeSongs')
           .update({ 
-            votes: supabase.rpc('increment', { row_id: parseInt(songId) }),
+            votes: supabase.rpc('decrement', { x: -1 }), // This is actually an increment
             updated_at: new Date().toISOString()
           })
           .eq('id', parseInt(songId));
@@ -157,11 +171,21 @@ export const useVotingStore = createBaseStore<VotingState>(
           
         if (deleteError) throw deleteError;
         
-        // Update the song's vote count
+        // Update the song's vote count directly rather than using the broken SQL call
+        const { data: songData, error: getSongError } = await supabase
+          .from('LeSongs')
+          .select('votes')
+          .eq('id', parseInt(songId))
+          .single();
+          
+        if (getSongError) throw getSongError;
+        
+        const newVoteCount = Math.max(0, (songData.votes || 1) - 1);
+        
         const { error: updateError } = await supabase
           .from('LeSongs')
           .update({ 
-            votes: supabase.rpc('decrement', { x: supabase.sql<number>`votes` }),
+            votes: newVoteCount,
             updated_at: new Date().toISOString()
           })
           .eq('id', parseInt(songId));

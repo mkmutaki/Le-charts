@@ -16,35 +16,20 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
-  const [hasOtherLikedSong, setHasOtherLikedSong] = useState(false);
   
-  // Check if user has voted for this song or any other song
+  // Check if user has voted for this song
   const checkUserVotes = async () => {
     if (!currentUser) {
       setHasVoted(false);
-      setHasOtherLikedSong(false);
       return;
     }
     
     try {
       const votedSongId = await getUserVotedSong();
-      
-      if (votedSongId) {
-        if (votedSongId === song.id) {
-          setHasVoted(true);
-          setHasOtherLikedSong(false);
-        } else {
-          setHasVoted(false);
-          setHasOtherLikedSong(true);
-        }
-      } else {
-        setHasVoted(false);
-        setHasOtherLikedSong(false);
-      }
+      setHasVoted(votedSongId === song.id);
     } catch (error) {
       console.error("Error checking user votes:", error);
       setHasVoted(false);
-      setHasOtherLikedSong(false);
     }
   };
   
@@ -57,7 +42,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   }, [currentUser, song]);
   
   const handleVoteClick = async () => {
-    if (isAnimating) return;
+    if (!currentUser || isAnimating) return;
     
     setIsAnimating(true);
     
@@ -73,11 +58,6 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         // Optimistically update UI for like
         setVoteCount(prev => prev + 1);
         setHasVoted(true);
-        
-        // If user had liked another song, we'll automatically unlike it
-        if (hasOtherLikedSong) {
-          setHasOtherLikedSong(false);
-        }
         
         // Call API to update vote
         await upvoteSong(song.id);
@@ -147,7 +127,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleVoteClick}
-            disabled={isAnimating}
+            disabled={isAnimating || !currentUser}
             className={cn(
               "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
               isAnimating ? "cursor-not-allowed" : "hover:bg-muted"
