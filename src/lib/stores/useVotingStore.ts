@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -13,7 +12,7 @@ interface VotingState extends BaseState {
 
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
-    MAX_VOTES_PER_USER: 2,
+    MAX_VOTES_PER_USER: 1,
     
     checkUserVoteCount: async () => {
       const { currentUser } = get();
@@ -47,9 +46,8 @@ export const useVotingStore = createBaseStore<VotingState>(
         // Check if user already voted for this song
         const { data: existingVote, error: voteCheckError } = await supabase
           .from('song_votes')
-          .select('id')
+          .select('id, song_id')
           .eq('user_id', currentUser.id)
-          .eq('song_id', parseInt(songId))
           .single();
           
         if (voteCheckError && voteCheckError.code !== 'PGRST116') {
@@ -58,16 +56,15 @@ export const useVotingStore = createBaseStore<VotingState>(
         }
         
         if (existingVote) {
-          // User already voted for this song, so we'll just return early
-          return;
-        }
-        
-        // Check user's total vote count
-        const voteCount = await get().checkUserVoteCount();
-        
-        if (voteCount >= MAX_VOTES_PER_USER) {
-          toast.error('Like limit reached (maximum 2 likes)');
-          return;
+          // User already voted for some song
+          if (existingVote.song_id === parseInt(songId)) {
+            // They voted for this exact song, so we just return
+            return;
+          } else {
+            // They voted for a different song, need to unlike that one first
+            toast.error('You can only like one song at a time. Unlike your current liked song first.');
+            return;
+          }
         }
         
         // Use the stored procedure to handle voting

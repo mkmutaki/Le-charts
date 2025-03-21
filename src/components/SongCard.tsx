@@ -16,6 +16,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
+  const [hasOtherLikedSong, setHasOtherLikedSong] = useState(false);
   
   useEffect(() => {
     // Check if current user has voted for this song
@@ -25,9 +26,17 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
       setHasVoted(false);
     }
     
+    // Check if user has voted for any other song
+    if (currentUser && currentUser.id) {
+      const hasLikedAnotherSong = currentUser.likedSongs?.some(
+        likedSongId => likedSongId !== song.id && song.votedBy.includes(currentUser.id)
+      );
+      setHasOtherLikedSong(hasLikedAnotherSong || false);
+    }
+    
     // Update vote count when song changes
     setVoteCount(song.votes);
-  }, [currentUser, song.votedBy, song.votes]);
+  }, [currentUser, song.votedBy, song.votes, song.id]);
   
   const handleVoteClick = async () => {
     if (isAnimating) return;
@@ -43,12 +52,15 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         // Call API to update vote
         await downvoteSong(song.id);
       } else {
-        // Optimistically update UI for like
-        setVoteCount(prev => prev + 1);
-        setHasVoted(true);
-        
-        // Call API to update vote
-        await upvoteSong(song.id);
+        // Only proceed if they haven't liked another song
+        if (!hasOtherLikedSong) {
+          // Optimistically update UI for like
+          setVoteCount(prev => prev + 1);
+          setHasVoted(true);
+          
+          // Call API to update vote
+          await upvoteSong(song.id);
+        }
       }
     } catch (error) {
       // Revert UI if there was an error
