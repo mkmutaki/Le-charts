@@ -26,6 +26,7 @@ export const SupabaseListener = () => {
             
           if (error) {
             console.error('Error checking admin status:', error);
+            // Continue with non-admin user rather than failing
           }
           
           const isAdmin = data?.is_admin || false;
@@ -44,6 +45,7 @@ export const SupabaseListener = () => {
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
+        // Set current user to null on error to prevent infinite loading
         setCurrentUser(null);
       }
     };
@@ -67,6 +69,7 @@ export const SupabaseListener = () => {
             
           if (error) {
             console.error('Error checking admin status on sign in:', error);
+            // Continue with non-admin user rather than failing
           }
           
           const isAdmin = data?.is_admin || false;
@@ -80,6 +83,13 @@ export const SupabaseListener = () => {
           setCurrentUser(user);
         } catch (error) {
           console.error('Error setting user after sign in:', error);
+          // Set a basic non-admin user on error to prevent white screen
+          if (session?.user) {
+            setCurrentUser({
+              id: session.user.id,
+              isAdmin: false
+            });
+          }
         }
       } else if (event === 'SIGNED_OUT') {
         toast.info('Signed out successfully');
