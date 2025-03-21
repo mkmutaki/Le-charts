@@ -76,17 +76,20 @@ export const useAuthStore = createBaseStore<AuthState>(
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) return false;
         
-        // Call the is_admin function directly
-        const { data, error } = await supabase
-          .rpc('is_admin', { user_id: authData.user.id });
+        // Query the user_roles table directly instead of using RPC
+        const { data: userRole, error } = await supabase
+          .from('user_roles')
+          .select('is_admin')
+          .eq('user_id', authData.user.id)
+          .single();
           
-        if (error) {
+        if (error && error.code !== 'PGRST116') {
           console.error('Error checking admin status:', error);
           return false;
         }
         
-        console.log('Admin status from database:', data);
-        return data || false;
+        console.log('Admin status from database (direct query):', userRole?.is_admin);
+        return userRole?.is_admin || false;
       } catch (error) {
         console.error('Error checking admin status:', error);
         return false;

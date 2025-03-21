@@ -17,19 +17,23 @@ export const SupabaseListener = () => {
         if (session?.user) {
           console.log('Session found, setting user:', session.user.id);
           
-          // Check if the user is an admin using the RPC function
-          const { data: isAdmin, error: adminError } = await supabase
-            .rpc('is_admin', { user_id: session.user.id });
+          // Check if the user is an admin by querying the user_roles table directly
+          const { data: userRole, error: roleError } = await supabase
+            .from('user_roles')
+            .select('is_admin')
+            .eq('user_id', session.user.id)
+            .single();
             
-          if (adminError) {
-            console.error('Error checking admin status:', adminError);
+          if (roleError && roleError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+            console.error('Error checking admin status:', roleError);
           }
           
-          console.log('User admin status:', isAdmin);
+          const isAdmin = userRole?.is_admin || false;
+          console.log('User admin status (direct query):', isAdmin);
           
           const user: User = {
             id: session.user.id,
-            isAdmin: isAdmin || false
+            isAdmin: isAdmin
           };
           
           setCurrentUser(user);
@@ -54,19 +58,23 @@ export const SupabaseListener = () => {
         try {
           toast.success('Signed in successfully!');
           
-          // Check if the user is an admin using the RPC function
-          const { data: isAdmin, error: adminError } = await supabase
-            .rpc('is_admin', { user_id: session.user.id });
+          // Check if the user is an admin by querying the user_roles table directly
+          const { data: userRole, error: roleError } = await supabase
+            .from('user_roles')
+            .select('is_admin')
+            .eq('user_id', session.user.id)
+            .single();
             
-          if (adminError) {
-            console.error('Error checking admin status on sign in:', adminError);
+          if (roleError && roleError.code !== 'PGRST116') {
+            console.error('Error checking admin status on sign in:', roleError);
           }
           
+          const isAdmin = userRole?.is_admin || false;
           console.log('User admin status (on sign in):', isAdmin);
           
           const user: User = {
             id: session.user.id,
-            isAdmin: isAdmin || false
+            isAdmin: isAdmin
           };
           
           setCurrentUser(user);

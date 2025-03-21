@@ -12,18 +12,22 @@ import { toast } from 'sonner';
 const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
-  const { currentUser, checkIsAdmin } = useAuthStore();
+  const { currentUser } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isAdmin = checkIsAdmin();
+  
+  // Check admin status directly from currentUser object
+  const isAdmin = currentUser?.isAdmin || false;
   
   useEffect(() => {
     const loadSongs = async () => {
       setIsLoading(true);
       try {
+        console.log('Fetching songs for admin page...');
         await fetchSongs();
+        console.log('Songs fetched successfully:', songs);
       } catch (error) {
         console.error("Error fetching songs:", error);
         toast.error("Failed to fetch songs");
@@ -38,6 +42,7 @@ const Admin = () => {
   }, [fetchSongs, isAdmin]);
   
   useEffect(() => {
+    console.log("Admin page - Current user:", currentUser);
     console.log("Admin check:", { isAdmin, currentUser });
   }, [isAdmin, currentUser]);
   

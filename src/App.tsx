@@ -12,8 +12,8 @@ import './App.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, checkIsAdmin } = useAuthStore();
-  const isAdmin = checkIsAdmin();
+  const { currentUser } = useAuthStore();
+  const isAdmin = currentUser?.isAdmin || false;
   
   // If no user is logged in, redirect to login page
   if (!currentUser) {

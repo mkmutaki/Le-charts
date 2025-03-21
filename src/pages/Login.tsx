@@ -16,25 +16,18 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { login, isLoading, currentUser, checkIsAdmin } = useAuthStore();
+  const { login, isLoading, currentUser } = useAuthStore();
   
   // Check if already logged in
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        // If already logged in with admin status, redirect
-        const isAdmin = await useAuthStore.getState().checkAdminStatus();
-        if (isAdmin) {
-          navigate('/admin');
-        } else {
-          navigate('/');
-        }
+    if (currentUser) {
+      if (currentUser.isAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/');
       }
-    };
-    
-    checkSession();
-  }, [navigate]);
+    }
+  }, [currentUser, navigate]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,12 +43,7 @@ const Login = () => {
       
       if (!result.error) {
         toast.success('Login successful!');
-        // Check if admin status after login
-        if (checkIsAdmin()) {
-          navigate('/admin');
-        } else {
-          navigate('/');
-        }
+        // Redirection will be handled by the useEffect above
       } else {
         setError(result.error);
       }
