@@ -10,7 +10,7 @@ import { useAuthStore } from './lib/store';
 
 import './App.css';
 
-// Protected route component with improved error handling
+// Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser } = useAuthStore();
   const isAdmin = currentUser?.isAdmin || false;

@@ -28,21 +28,24 @@ export const useAuthStore = createBaseStore<AuthState>(
         });
         
         if (error) {
+          console.error('Login error from Supabase:', error);
           toast.error(error.message);
           set({ isLoading: false });
           return { error: error.message };
         }
         
         if (!data.user) {
+          console.error('No user returned from login');
           set({ isLoading: false });
           return { error: 'No user returned from login' };
         }
         
-        // Admin status will be set by the auth listener
+        // Admin status will be set by the auth listener in SupabaseListener
+        console.log('Login successful, user:', data.user.id);
         set({ isLoading: false });
         return { error: null };
       } catch (error) {
-        console.error('Login error:', error);
+        console.error('Unexpected login error:', error);
         set({ isLoading: false });
         return { error: 'An unexpected error occurred' };
       }
@@ -56,13 +59,14 @@ export const useAuthStore = createBaseStore<AuthState>(
         const { error } = await supabase.auth.signOut();
         
         if (error) {
+          console.error('Logout error:', error);
           toast.error(error.message);
         } else {
+          console.log('Logout successful');
           set({ currentUser: null });
-          toast.info('Logged out successfully');
         }
       } catch (error) {
-        console.error('Logout error:', error);
+        console.error('Unexpected logout error:', error);
         toast.error('Error during logout');
       } finally {
         set({ isLoading: false });
@@ -73,7 +77,10 @@ export const useAuthStore = createBaseStore<AuthState>(
     checkAdminStatus: async () => {
       try {
         const { data: authData } = await supabase.auth.getUser();
-        if (!authData.user) return false;
+        if (!authData.user) {
+          console.log('No user found when checking admin status');
+          return false;
+        }
         
         // Query the user_roles table directly
         const { data, error } = await supabase
@@ -112,10 +119,13 @@ export const toggleAdminMode = () => {
   
   if (!currentUser) return;
   
+  const newIsAdmin = !currentUser.isAdmin;
+  console.log('Toggling admin mode, new status:', newIsAdmin);
+  
   setCurrentUser({
     ...currentUser,
-    isAdmin: !currentUser.isAdmin
+    isAdmin: newIsAdmin
   });
   
-  toast.info(currentUser.isAdmin ? 'Switched to regular user mode' : 'Switched to admin mode');
+  toast.info(newIsAdmin ? 'Switched to admin mode' : 'Switched to regular user mode');
 };

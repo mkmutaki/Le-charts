@@ -21,19 +21,17 @@ const Login = () => {
   // Check if already logged in
   useEffect(() => {
     if (currentUser && !isRedirecting) {
-      setIsRedirecting(true);
       console.log('User is logged in, redirecting to appropriate page', currentUser);
+      setIsRedirecting(true);
       
-      // Small delay to ensure consistent navigation
-      setTimeout(() => {
-        if (currentUser.isAdmin) {
-          console.log('Redirecting admin to admin page');
-          navigate('/admin');
-        } else {
-          console.log('Redirecting regular user to home');
-          navigate('/');
-        }
-      }, 100);
+      // Navigate based on admin status
+      if (currentUser.isAdmin) {
+        console.log('Redirecting admin to admin page');
+        navigate('/admin');
+      } else {
+        console.log('Redirecting regular user to home');
+        navigate('/');
+      }
     }
   }, [currentUser, navigate, isRedirecting]);
   
@@ -47,6 +45,7 @@ const Login = () => {
     }
     
     try {
+      console.log('Attempting login with email:', email);
       const result = await login(email, password);
       
       if (result.error) {
