@@ -70,6 +70,8 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
+        console.log('Upvoting song:', songId);
+        
         // Check if user already voted for ANY song
         const { data: existingVotes, error: checkError } = await supabase
           .from('song_votes')
@@ -98,11 +100,21 @@ export const useVotingStore = createBaseStore<VotingState>(
             
           if (deleteError) throw deleteError;
           
-          // Update the previous song's vote count
+          // Update the previous song's vote count directly
+          const { data: prevSongData, error: getPrevSongError } = await supabase
+            .from('LeSongs')
+            .select('votes')
+            .eq('id', parseInt(currentVotedSongId))
+            .single();
+            
+          if (getPrevSongError) throw getPrevSongError;
+          
+          const newPrevVoteCount = Math.max(0, (prevSongData.votes || 1) - 1);
+          
           const { error: updatePrevError } = await supabase
             .from('LeSongs')
             .update({ 
-              votes: supabase.rpc('decrement', { x: 1 }),
+              votes: newPrevVoteCount,
               updated_at: new Date().toISOString()
             })
             .eq('id', parseInt(currentVotedSongId));
@@ -120,11 +132,23 @@ export const useVotingStore = createBaseStore<VotingState>(
             
         if (error) throw error;
         
+        // Get current vote count
+        const { data: songData, error: getSongError } = await supabase
+          .from('LeSongs')
+          .select('votes')
+          .eq('id', parseInt(songId))
+          .single();
+          
+        if (getSongError) throw getSongError;
+        
+        // Increment vote count
+        const newVoteCount = (songData.votes || 0) + 1;
+        
         // Update the song's vote count
         const { error: updateError } = await supabase
           .from('LeSongs')
           .update({ 
-            votes: supabase.rpc('decrement', { x: -1 }), // This is actually an increment
+            votes: newVoteCount,
             updated_at: new Date().toISOString()
           })
           .eq('id', parseInt(songId));
