@@ -54,7 +54,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     
     // Check user votes when component mounts or song/user changes
     checkUserVotes();
-  }, [currentUser, song, getUserVotedSong]);
+  }, [currentUser, song]);
   
   const handleVoteClick = async () => {
     if (isAnimating) return;

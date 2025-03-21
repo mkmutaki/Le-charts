@@ -42,15 +42,20 @@ export const useVotingStore = createBaseStore<VotingState>(
       if (!currentUser) return null;
       
       try {
+        // Fix: Changed from maybeSingle() to get all records and take the first one if any
         const { data, error } = await supabase
           .from('song_votes')
           .select('song_id')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
+          .eq('user_id', currentUser.id);
           
         if (error) throw error;
         
-        return data?.song_id ? data.song_id.toString() : null;
+        // If user has voted for any song, return the first one
+        if (data && data.length > 0) {
+          return data[0].song_id.toString();
+        }
+        
+        return null;
       } catch (error) {
         console.error('Error getting user voted song:', error);
         return null;
@@ -67,47 +72,42 @@ export const useVotingStore = createBaseStore<VotingState>(
       
       try {
         // Check if user already voted for this exact song
-        const { data: existingVote, error: checkError } = await supabase
+        const { data: existingVotes, error: checkError } = await supabase
           .from('song_votes')
           .select('song_id')
-          .eq('user_id', currentUser.id)
-          .eq('song_id', parseInt(songId))
-          .maybeSingle();
+          .eq('user_id', currentUser.id);
           
         if (checkError) throw checkError;
         
         // User already voted for this song
-        if (existingVote) {
+        if (existingVotes && existingVotes.some(vote => vote.song_id.toString() === songId)) {
           toast.info('You already liked this song');
           return;
         }
         
+        // Check if user has already voted for ANY song (one vote limit)
+        if (existingVotes && existingVotes.length > 0) {
+          toast.error('You can only like one song at a time. Unlike your current liked song first.');
+          return;
+        }
+        
         // Use the stored procedure to handle voting
-        try {
-          const { error } = await supabase
-            .rpc('vote_for_song', { 
-              p_song_id: parseInt(songId),
-              p_user_id: currentUser.id
-            });
+        const { error } = await supabase
+          .rpc('vote_for_song', { 
+            p_song_id: parseInt(songId),
+            p_user_id: currentUser.id
+          });
             
-          if (error) {
-            // This is the expected error when trying to vote for multiple songs
-            if (error.message.includes('Cannot vote for a different song')) {
-              toast.error('You can only like one song at a time. Unlike your current liked song first.');
-              return;
-            }
-            throw error;
-          }
-          
-          toast.success('Vote counted!');
-        } catch (error: any) {
-          // Handle the specific error from our RPC function
-          if (error.message && error.message.includes('Cannot vote for a different song')) {
+        if (error) {
+          // This is the expected error when trying to vote for multiple songs
+          if (error.message.includes('Cannot vote for a different song')) {
             toast.error('You can only like one song at a time. Unlike your current liked song first.');
             return;
           }
           throw error;
         }
+        
+        toast.success('Vote counted!');
       } catch (error) {
         console.error('Error voting for song:', error);
         toast.error('Failed to vote for song');
@@ -124,17 +124,16 @@ export const useVotingStore = createBaseStore<VotingState>(
       
       try {
         // Check if user has voted for this song
-        const { data: existingVote, error: voteCheckError } = await supabase
+        const { data: existingVotes, error: voteCheckError } = await supabase
           .from('song_votes')
           .select('id')
           .eq('user_id', currentUser.id)
-          .eq('song_id', parseInt(songId))
-          .maybeSingle();
+          .eq('song_id', parseInt(songId));
           
         if (voteCheckError) throw voteCheckError;
         
         // User hasn't voted for this song
-        if (!existingVote) {
+        if (!existingVotes || existingVotes.length === 0) {
           toast.error('You haven\'t liked this song yet');
           return;
         }
