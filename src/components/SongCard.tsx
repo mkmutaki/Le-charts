@@ -70,15 +70,14 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         // Call API to update vote
         await downvoteSong(song.id);
       } else {
-        // Don't proceed if user already liked another song
-        if (hasOtherLikedSong) {
-          setIsAnimating(false);
-          return;
-        }
-        
         // Optimistically update UI for like
         setVoteCount(prev => prev + 1);
         setHasVoted(true);
+        
+        // If user had liked another song, we'll automatically unlike it
+        if (hasOtherLikedSong) {
+          setHasOtherLikedSong(false);
+        }
         
         // Call API to update vote
         await upvoteSong(song.id);
@@ -148,10 +147,10 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleVoteClick}
-            disabled={isAnimating || (!hasVoted && hasOtherLikedSong)}
+            disabled={isAnimating}
             className={cn(
               "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
-              (isAnimating || (!hasVoted && hasOtherLikedSong)) ? "cursor-not-allowed" : "hover:bg-muted"
+              isAnimating ? "cursor-not-allowed" : "hover:bg-muted"
             )}
             aria-label={hasVoted ? `Unlike ${song.title}` : `Like ${song.title}`}
           >
@@ -160,7 +159,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
                 "h-5 w-5 md:h-6 md:w-6 transition-colors duration-200",
                 isAnimating ? "text-primary heart-beat" : 
                 hasVoted ? "text-primary" : 
-                hasOtherLikedSong && !hasVoted ? "text-muted-foreground opacity-50" : "text-muted-foreground group-hover:text-primary/80"
+                "text-muted-foreground group-hover:text-primary/80"
               )} 
               fill={hasVoted ? "currentColor" : "none"}
             />

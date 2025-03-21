@@ -42,7 +42,6 @@ export const useVotingStore = createBaseStore<VotingState>(
       if (!currentUser) return null;
       
       try {
-        // Fix: Changed from maybeSingle() to get all records and take the first one if any
         const { data, error } = await supabase
           .from('song_votes')
           .select('song_id')
@@ -63,7 +62,7 @@ export const useVotingStore = createBaseStore<VotingState>(
     },
     
     upvoteSong: async (songId: string) => {
-      const { currentUser, MAX_VOTES_PER_USER } = get();
+      const { currentUser } = get();
       
       if (!currentUser) {
         toast.error('You need to be logged in to vote');
@@ -71,7 +70,7 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
-        // Check if user already voted for this exact song
+        // Check if user already voted for ANY song
         const { data: existingVotes, error: checkError } = await supabase
           .from('song_votes')
           .select('song_id')
@@ -79,33 +78,44 @@ export const useVotingStore = createBaseStore<VotingState>(
           
         if (checkError) throw checkError;
         
-        // User already voted for this song
+        // User already voted for this specific song
         if (existingVotes && existingVotes.some(vote => vote.song_id.toString() === songId)) {
           toast.info('You already liked this song');
           return;
         }
         
-        // Check if user has already voted for ANY song (one vote limit)
+        // Check if user has voted for any OTHER song (one vote limit)
         if (existingVotes && existingVotes.length > 0) {
-          toast.error('You can only like one song at a time. Unlike your current liked song first.');
-          return;
+          // If the user has voted for a different song, we need to remove that vote first
+          const currentVotedSongId = existingVotes[0].song_id.toString();
+          
+          // Unlike the current song first
+          await get().downvoteSong(currentVotedSongId);
+          
+          // Short delay to ensure the unlike operation completes
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
         
-        // Use the stored procedure to handle voting
+        // Now add the new vote
         const { error } = await supabase
-          .rpc('vote_for_song', { 
-            p_song_id: parseInt(songId),
-            p_user_id: currentUser.id
+          .from('song_votes')
+          .insert({
+            song_id: parseInt(songId),
+            user_id: currentUser.id
           });
             
-        if (error) {
-          // This is the expected error when trying to vote for multiple songs
-          if (error.message.includes('Cannot vote for a different song')) {
-            toast.error('You can only like one song at a time. Unlike your current liked song first.');
-            return;
-          }
-          throw error;
-        }
+        if (error) throw error;
+        
+        // Update the song's vote count
+        const { error: updateError } = await supabase
+          .from('LeSongs')
+          .update({ 
+            votes: supabase.rpc('increment', { row_id: parseInt(songId) }),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', parseInt(songId));
+        
+        if (updateError) throw updateError;
         
         toast.success('Vote counted!');
       } catch (error) {
@@ -123,7 +133,7 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
-        // Check if user has voted for this song
+        // Check if user has voted for this specific song
         const { data: existingVotes, error: voteCheckError } = await supabase
           .from('song_votes')
           .select('id')
@@ -138,7 +148,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           return;
         }
         
-        // Delete the vote record - this triggers the database function to handle vote count
+        // Delete the vote record
         const { error: deleteError } = await supabase
           .from('song_votes')
           .delete()
@@ -146,6 +156,17 @@ export const useVotingStore = createBaseStore<VotingState>(
           .eq('song_id', parseInt(songId));
           
         if (deleteError) throw deleteError;
+        
+        // Update the song's vote count
+        const { error: updateError } = await supabase
+          .from('LeSongs')
+          .update({ 
+            votes: supabase.rpc('decrement', { x: supabase.sql<number>`votes` }),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', parseInt(songId));
+        
+        if (updateError) throw updateError;
         
         toast.success('Vote removed!');
       } catch (error) {
@@ -163,13 +184,21 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
       
       try {
-        // Use the stored procedure to reset all votes
-        const { error } = await supabase
-          .rpc('reset_all_votes');
+        // Delete all vote records
+        const { error: deleteVotesError } = await supabase
+          .from('song_votes')
+          .delete()
+          .neq('user_id', 'dummy');
+        
+        if (deleteVotesError) throw deleteVotesError;
+        
+        // Reset all song vote counts
+        const { error: resetSongsError } = await supabase
+          .from('LeSongs')
+          .update({ votes: 0, updated_at: new Date().toISOString() })
+          .neq('id', 0);
           
-        if (error) {
-          throw error;
-        }
+        if (resetSongsError) throw resetSongsError;
         
         toast.info('All votes have been reset');
       } catch (error) {
