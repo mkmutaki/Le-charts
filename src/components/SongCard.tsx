@@ -12,7 +12,7 @@ interface SongCardProps {
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
   const { currentUser } = useSongStore();
-  const { upvoteSong } = useVotingStore();
+  const { upvoteSong, downvoteSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
@@ -29,23 +29,37 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     setVoteCount(song.votes);
   }, [currentUser, song.votedBy, song.votes]);
   
-  const handleUpvote = async () => {
-    if (isAnimating || hasVoted) return;
+  const handleVoteClick = async () => {
+    if (isAnimating) return;
     
     setIsAnimating(true);
     
     try {
-      // Optimistically update UI
-      setVoteCount(prev => prev + 1);
-      setHasVoted(true);
-      
-      // Call API to update vote
-      await upvoteSong(song.id);
+      if (hasVoted) {
+        // Optimistically update UI for unlike
+        setVoteCount(prev => Math.max(0, prev - 1));
+        setHasVoted(false);
+        
+        // Call API to update vote
+        await downvoteSong(song.id);
+      } else {
+        // Optimistically update UI for like
+        setVoteCount(prev => prev + 1);
+        setHasVoted(true);
+        
+        // Call API to update vote
+        await upvoteSong(song.id);
+      }
     } catch (error) {
       // Revert UI if there was an error
-      setVoteCount(prev => prev - 1);
-      setHasVoted(false);
-      console.error('Error upvoting song:', error);
+      if (hasVoted) {
+        setVoteCount(prev => prev + 1);
+        setHasVoted(true);
+      } else {
+        setVoteCount(prev => Math.max(0, prev - 1));
+        setHasVoted(false);
+      }
+      console.error('Error toggling vote:', error);
     } finally {
       setTimeout(() => {
         setIsAnimating(false);
@@ -99,16 +113,16 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
           )}
         </div>
         
-        {/* Upvote button */}
+        {/* Vote button */}
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
-            onClick={handleUpvote}
-            disabled={hasVoted}
+            onClick={handleVoteClick}
+            disabled={isAnimating}
             className={cn(
               "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
-              hasVoted ? "cursor-not-allowed" : "hover:bg-muted"
+              isAnimating ? "cursor-not-allowed" : "hover:bg-muted"
             )}
-            aria-label={`Upvote ${song.title}`}
+            aria-label={hasVoted ? `Unlike ${song.title}` : `Like ${song.title}`}
           >
             <Heart 
               className={cn(
