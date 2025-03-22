@@ -1,47 +1,58 @@
 
 import { useEffect } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useSongStore } from '@/lib/store';
+import { useAuthStore } from '@/lib/store';
 
 export const SupabaseListener = () => {
-  const fetchSongs = useSongStore.getState().fetchSongs;
-  
+  const { setCurrentUser } = useAuthStore();
+
   useEffect(() => {
-    // Set up realtime subscription to refresh data when changes occur
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'LeSongs'
-        },
-        () => {
-          // Refresh songs when any change happens
-          fetchSongs();
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          const user = session.user;
+          
+          // Get admin status from the database
+          const { data, error } = await supabase.rpc('is_admin', {
+            user_id: user.id
+          });
+          
+          // Update the user in the store
+          setCurrentUser({
+            id: user.id,
+            isAdmin: data || false
+          });
+        } else {
+          // No session means the user is signed out
+          setCurrentUser(null);
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'song_votes'
-        },
-        () => {
-          // Refresh songs when votes change
-          fetchSongs();
-        }
-      )
-      .subscribe();
-      
+      }
+    );
+
+    // Check for existing session on mount
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const user = session.user;
+        
+        // Get admin status from the database
+        const { data, error } = await supabase.rpc('is_admin', {
+          user_id: user.id
+        });
+        
+        // Update the user in the store
+        setCurrentUser({
+          id: user.id,
+          isAdmin: data || false
+        });
+      }
+    });
+
     return () => {
-      // Clean up subscription
-      supabase.removeChannel(channel);
+      subscription.unsubscribe();
     };
-  }, [fetchSongs]);
-  
-  // This is a utility component that doesn't render anything
+  }, [setCurrentUser]);
+
   return null;
 };

@@ -17,18 +17,16 @@ export const useAuthStore = createBaseStore<AuthState>(
       if (!currentUser) return false;
       
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('is_admin')
-          .eq('user_id', currentUser.id)
-          .single();
+        const { data, error } = await supabase.rpc('is_admin', {
+          user_id: currentUser.id
+        });
           
         if (error) {
           console.error('Error checking admin status:', error);
           return false;
         }
         
-        return data?.is_admin || false;
+        return data || false;
       } catch (error) {
         console.error('Error checking admin status:', error);
         return false;

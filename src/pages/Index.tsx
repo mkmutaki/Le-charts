@@ -1,23 +1,16 @@
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useSongStore, useAuthStore, useVotingStore } from '@/lib/store';
+import { useSongStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
-import { AddSongModal } from '@/components/AddSongModal';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 
 const Index = () => {
   const { songs, fetchSongs } = useSongStore();
-  const { checkIsAdmin } = useAuthStore();
-  const { resetVotes } = useVotingStore();
-  const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const isAdmin = checkIsAdmin();
   
   // Songs are already sorted by votes and then by updated_at in the fetchSongs function
   const sortedSongs = songs;
@@ -47,12 +40,6 @@ const Index = () => {
     };
   }, [fetchSongs]);
   
-  const handleResetVotes = () => {
-    if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
-      resetVotes();
-    }
-  };
-  
   return (
     <div className={cn(
       "min-h-screen transition-opacity duration-500",
@@ -70,18 +57,6 @@ const Index = () => {
               <p className="text-muted-foreground mt-2">
                 Vote for your favorite LeSongs
               </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-1.5 bg-muted/50 text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
-                >
-                  <Shield className="h-4 w-4" />
-                  <span>Admin</span>
-                </Link>
-              )}
             </div>
           </div>
           
@@ -101,7 +76,7 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <EmptyState onAddClick={() => isAdmin ? setIsAddSongOpen(true) : null} />
+            <EmptyState />
           )}
         </div>
       </main>
@@ -129,13 +104,6 @@ const Index = () => {
           <path d="m18 15-6-6-6 6"/>
         </svg>
       </button>
-      
-      {isAdmin && (
-        <AddSongModal 
-          isOpen={isAddSongOpen} 
-          onClose={() => setIsAddSongOpen(false)} 
-        />
-      )}
     </div>
   );
 };

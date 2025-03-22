@@ -1,17 +1,16 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AddSongModal } from '@/components/AddSongModal';
 import { EditSongModal } from '@/components/EditSongModal';
-import { cn } from '@/lib/utils';
 
 const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
-  const { checkIsAdmin } = useAuthStore();
+  const { currentUser, checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -26,6 +25,11 @@ const Admin = () => {
     
     loadSongs();
   }, [fetchSongs]);
+  
+  // If user is not logged in or not an admin, redirect to login
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
   
   if (!isAdmin) {
     return (
