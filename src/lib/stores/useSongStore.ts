@@ -27,44 +27,39 @@ export const useSongStore = createBaseStore<SongState>(
           .order('updated_at', { ascending: false });
           
         if (songsError) {
-          console.error('Error fetching songs:', songsError);
           throw songsError;
         }
         
-        // Initialize with empty array if no data yet
-        const processedSongs = songsData ? songsData.map(song => {
-          const songObj = convertSupabaseSong(song);
-          songObj.votedBy = []; // Initialize empty array, will populate later if votes exist
-          return songObj;
-        }) : [];
-        
-        // Get votes if we have songs
-        if (processedSongs.length > 0) {
-          try {
-            const { data: votesData, error: votesError } = await supabase
-              .from('song_votes')
-              .select('song_id, device_id');
-              
-            if (!votesError && votesData) {
-              // Update songs with vote data
-              processedSongs.forEach(song => {
-                const songVotes = votesData.filter(vote => vote.song_id === parseInt(song.id));
-                song.votedBy = songVotes.map(vote => vote.device_id);
-                song.votes = songVotes.length;
-              });
-            }
-          } catch (votesError) {
-            console.error('Error fetching votes data:', votesError);
-            // Continue with songs but without votes data
-          }
+        const { data: votesData, error: votesError } = await supabase
+          .from('song_votes')
+          .select('song_id, device_id');
+          
+        if (votesError) {
+          throw votesError;
         }
         
-        set({ songs: processedSongs, isLoading: false });
+        const songs = songsData.map(song => {
+          const songObj = convertSupabaseSong(song);
+          songObj.votedBy = votesData
+            ? votesData
+                .filter(vote => vote.song_id === song.id)
+                .map(vote => vote.device_id)
+            : [];
+          
+          const actualVotes = votesData
+            ? votesData.filter(vote => vote.song_id === song.id).length
+            : 0;
+          
+          songObj.votes = actualVotes;
+          
+          return songObj;
+        });
+        
+        set({ songs, isLoading: false });
       } catch (error) {
-        console.error('Error in fetchSongs:', error);
-        // Set empty songs but mark as no longer loading
-        set({ songs: [], isLoading: false });
-        throw error;
+        console.error('Error fetching songs:', error);
+        toast.error('Failed to load songs');
+        set({ isLoading: false });
       }
     },
     
