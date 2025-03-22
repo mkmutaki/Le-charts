@@ -14,28 +14,23 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
   const { login, isLoading, currentUser } = useAuthStore();
   
   // Check if already logged in
   useEffect(() => {
-    if (currentUser && !isRedirecting) {
-      setIsRedirecting(true);
+    if (currentUser) {
       console.log('User is logged in, redirecting to appropriate page', currentUser);
       
-      // Small delay to ensure consistent navigation
-      setTimeout(() => {
-        if (currentUser.isAdmin) {
-          console.log('Redirecting admin to admin page');
-          navigate('/admin');
-        } else {
-          console.log('Redirecting regular user to home');
-          navigate('/');
-        }
-      }, 100);
+      if (currentUser.isAdmin) {
+        console.log('Redirecting admin to admin page');
+        navigate('/admin');
+      } else {
+        console.log('Redirecting regular user to home');
+        navigate('/');
+      }
     }
-  }, [currentUser, navigate, isRedirecting]);
+  }, [currentUser, navigate]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +82,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10"
-                disabled={isLoading || isRedirecting}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -103,7 +98,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10"
-                disabled={isLoading || isRedirecting}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -111,9 +106,9 @@ const Login = () => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isLoading || isRedirecting}
+            disabled={isLoading}
           >
-            {isLoading ? 'Logging in...' : isRedirecting ? 'Redirecting...' : 'Login'}
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
         </form>
         

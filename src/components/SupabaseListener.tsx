@@ -36,7 +36,7 @@ export const SupabaseListener = () => {
           }
           
           const isAdmin = data?.is_admin || false;
-          console.log('User admin status:', isAdmin, 'based on data:', data);
+          console.log('User admin status:', isAdmin);
           
           const user: User = {
             id: session.user.id,
@@ -82,7 +82,7 @@ export const SupabaseListener = () => {
           }
           
           const isAdmin = data?.is_admin || false;
-          console.log('User admin status on sign in:', isAdmin, 'based on data:', data);
+          console.log('User admin status on sign in:', isAdmin);
           
           const user: User = {
             id: session.user.id,
