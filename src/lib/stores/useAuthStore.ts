@@ -28,7 +28,17 @@ export const useAuthStore = createBaseStore<AuthState>(
           return false;
         }
         
-        return Boolean(data);
+        const isAdmin = Boolean(data);
+        
+        // Update the user with the admin status
+        set({ 
+          currentUser: { 
+            ...currentUser, 
+            isAdmin 
+          } 
+        });
+        
+        return isAdmin;
       } catch (error) {
         console.error('Error checking admin status:', error);
         toast.error('Error verifying admin permissions');

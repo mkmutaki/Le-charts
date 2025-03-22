@@ -16,38 +16,51 @@ const Admin = () => {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
   
   useEffect(() => {
     const checkAuth = async () => {
+      setIsCheckingAuth(true);
+      
       if (!currentUser) {
         navigate('/login');
         return;
       }
       
-      const adminStatus = await checkAdminStatus();
-      setIsAdmin(adminStatus);
-      
-      if (!adminStatus) {
-        toast.error('You do not have admin privileges');
+      try {
+        const adminStatus = await checkAdminStatus();
+        setIsAdmin(adminStatus);
+        
+        if (!adminStatus) {
+          toast.error('You do not have admin privileges');
+          navigate('/');
+        } else {
+          await fetchSongs();
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        toast.error('Error verifying admin permissions');
         navigate('/');
+      } finally {
+        setIsCheckingAuth(false);
+        setIsLoading(false);
       }
     };
     
     checkAuth();
-  }, [currentUser, navigate, checkAdminStatus]);
+  }, [currentUser, navigate, checkAdminStatus, fetchSongs]);
   
-  useEffect(() => {
-    const loadSongs = async () => {
-      await fetchSongs();
-      setIsLoading(false);
-    };
-    
-    loadSongs();
-  }, [fetchSongs]);
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
   
   if (!currentUser || !isAdmin) {
-    return null; // We're handling navigation in the useEffect
+    return null;
   }
 
   const handleResetVotes = () => {

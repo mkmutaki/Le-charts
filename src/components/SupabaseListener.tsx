@@ -8,6 +8,29 @@ export const SupabaseListener = () => {
   const { setCurrentUser } = useAuthStore();
 
   useEffect(() => {
+    // Function to check admin status and update user
+    const updateUserWithAdminStatus = async (userId: string) => {
+      try {
+        // Get admin status from the database
+        const { data, error } = await supabase.rpc('is_admin', {
+          user_id: userId
+        });
+        
+        if (error) {
+          console.error('Error checking admin status:', error);
+          return null;
+        }
+        
+        return {
+          id: userId,
+          isAdmin: Boolean(data)
+        };
+      } catch (err) {
+        console.error('Error in admin status check:', err);
+        return null;
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -15,38 +38,19 @@ export const SupabaseListener = () => {
         
         if (session) {
           const user = session.user;
+          const updatedUser = await updateUserWithAdminStatus(user.id);
           
-          try {
-            // Get admin status from the database
-            const { data, error } = await supabase.rpc('is_admin', {
-              user_id: user.id
-            });
-            
-            if (error) {
-              console.error('Error checking admin status:', error);
-              toast.error('Error checking admin status');
-              setCurrentUser(null);
-              return;
-            }
-            
-            const isAdmin = Boolean(data);
-            
-            // Update the user in the store
-            setCurrentUser({
-              id: user.id,
-              isAdmin
-            });
-            
-            console.log("User authenticated with admin status:", isAdmin);
+          if (updatedUser) {
+            setCurrentUser(updatedUser);
+            console.log("User authenticated with admin status:", updatedUser.isAdmin);
             
             if (event === 'SIGNED_IN') {
               // We'll let the Login component handle navigation and any messaging
-              // rather than signing out non-admin users here
-              toast.success('Authentication successful');
+              console.log("Sign in event detected");
             }
-          } catch (err) {
-            console.error('Error in auth listener:', err);
+          } else {
             setCurrentUser(null);
+            toast.error('Error checking admin status');
           }
         } else {
           // No session means the user is signed out
@@ -60,30 +64,12 @@ export const SupabaseListener = () => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         const user = session.user;
+        const updatedUser = await updateUserWithAdminStatus(user.id);
         
-        try {
-          // Get admin status from the database
-          const { data, error } = await supabase.rpc('is_admin', {
-            user_id: user.id
-          });
-          
-          if (error) {
-            console.error('Error checking admin status:', error);
-            setCurrentUser(null);
-            return;
-          }
-          
-          const isAdmin = Boolean(data);
-          
-          // Update the user in the store
-          setCurrentUser({
-            id: user.id,
-            isAdmin
-          });
-          
-          console.log("Session found with admin status:", isAdmin);
-        } catch (err) {
-          console.error('Error checking session:', err);
+        if (updatedUser) {
+          setCurrentUser(updatedUser);
+          console.log("Session found with admin status:", updatedUser.isAdmin);
+        } else {
           setCurrentUser(null);
         }
       }

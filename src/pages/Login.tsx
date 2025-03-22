@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,21 +13,31 @@ const Login = () => {
   const navigate = useNavigate();
   const { currentUser, checkAdminStatus } = useAuthStore();
   
+  // Check if user is already logged in and is admin
   useEffect(() => {
-    const checkStatus = async () => {
-      if (currentUser) {
+    if (!currentUser) return;
+    
+    const checkAdmin = async () => {
+      try {
         const isAdmin = await checkAdminStatus();
         
         if (isAdmin) {
           navigate('/admin');
-        } else if (currentUser) {
+        } else {
           toast.error('You do not have admin privileges');
         }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
       }
     };
     
-    checkStatus();
+    checkAdmin();
   }, [currentUser, navigate, checkAdminStatus]);
+  
+  // If already authenticated and has admin status, redirect to admin page
+  if (currentUser) {
+    return null; // We'll let the useEffect handle navigation
+  }
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +61,8 @@ const Login = () => {
       }
       
       toast.success('Logged in successfully');
+      
+      // Note: navigation will be handled by the useEffect when currentUser updates
       
     } catch (error) {
       console.error('Login error:', error);
