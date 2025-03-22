@@ -1,17 +1,16 @@
 
 import { useState, useEffect } from 'react';
-import { Music, Plus, Shield, LogIn, LogOut } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Music, Plus, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AddSongModal } from './AddSongModal';
-import { useAuthStore } from '@/lib/store';
+import { useSongStore, useAuthStore, toggleAdminMode } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
-  const { currentUser, checkIsAdmin, logout } = useAuthStore();
+  const { currentUser } = useSongStore();
+  const { checkIsAdmin } = useAuthStore();
   const isAdmin = checkIsAdmin();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,17 +20,6 @@ export const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
-
-  // Log the current login state for debugging
-  useEffect(() => {
-    console.log('Current user in Navbar:', currentUser);
-    console.log('Is admin:', isAdmin);
-  }, [currentUser, isAdmin]);
 
   return (
     <>
@@ -52,33 +40,19 @@ export const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-amber-100 text-amber-800"
-              >
-                <Shield className="h-3.5 w-3.5" />
-                Admin Dashboard
-              </Link>
-            )}
-            
-            {currentUser ? (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 bg-muted text-muted-foreground px-3 py-1.5 rounded-full text-xs font-medium hover:bg-muted/80 transition-all"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Logout
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-xs font-medium hover:opacity-90 transition-all"
-              >
-                <LogIn className="h-3.5 w-3.5" />
-                Login
-              </Link>
-            )}
+            {/* Admin mode toggle (development only) */}
+            <button
+              onClick={toggleAdminMode}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                isAdmin 
+                  ? "bg-amber-100 text-amber-800" 
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              {isAdmin ? "Admin Mode" : "User Mode"}
+            </button>
             
             {/* Add Song button - only visible to admins */}
             {isAdmin && (

@@ -30,7 +30,7 @@ export const createBaseStore = <T extends BaseState>(
   return create<T>()(
     persist(
       (set, get) => ({
-        currentUser: null, // Initialize with null instead of dummy user
+        currentUser: dummyUser, // Default user for development
         isLoading: false,
         
         setCurrentUser: (user) => {
