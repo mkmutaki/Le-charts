@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
@@ -32,10 +31,10 @@ export const useSongStore = createBaseStore<SongState>(
           throw songsError;
         }
         
-        // Fetch votes - using the song_votes table directly
+        // Fetch votes - using the song_votes table directly with the device_id
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
-          .select('song_id, ip_address');
+          .select('song_id, device_id');
           
         if (votesError) {
           throw votesError;
@@ -44,11 +43,11 @@ export const useSongStore = createBaseStore<SongState>(
         // Convert songs and add votedBy information
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
-          // Add votedBy information using IP addresses
+          // Add votedBy information using device IDs
           songObj.votedBy = votesData
             ? votesData
                 .filter(vote => vote.song_id === song.id)
-                .map(vote => vote.ip_address)
+                .map(vote => vote.device_id)
             : [];
           
           // Update vote count based on actual entries in song_votes table

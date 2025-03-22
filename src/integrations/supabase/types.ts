@@ -44,22 +44,25 @@ export type Database = {
       }
       song_votes: {
         Row: {
+          device_id: string
           id: number
-          ip_address: string
+          ip_address: string | null
           song_id: number
           vote_date: string | null
           voted_at: string | null
         }
         Insert: {
+          device_id: string
           id?: number
-          ip_address: string
+          ip_address?: string | null
           song_id: number
           vote_date?: string | null
           voted_at?: string | null
         }
         Update: {
+          device_id?: string
           id?: number
-          ip_address?: string
+          ip_address?: string | null
           song_id?: number
           vote_date?: string | null
           voted_at?: string | null

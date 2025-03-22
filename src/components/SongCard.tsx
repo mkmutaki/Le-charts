@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
@@ -138,4 +137,3 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     </div>
   );
 };
-

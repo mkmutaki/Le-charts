@@ -2,6 +2,7 @@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
+import { v4 as uuidv4 } from 'uuid';
 
 interface VotingState extends BaseState {
   upvoteSong: (songId: string) => Promise<void>;
@@ -9,16 +10,29 @@ interface VotingState extends BaseState {
   resetVotes: () => Promise<void>;
 }
 
+// Function to get or create a device ID
+const getDeviceId = (): string => {
+  // Check if a device ID already exists in localStorage
+  let deviceId = localStorage.getItem('device_id');
+  
+  // If not, create a new UUID and store it
+  if (!deviceId) {
+    deviceId = uuidv4();
+    localStorage.setItem('device_id', deviceId);
+  }
+  
+  return deviceId;
+};
+
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
     getUserVotedSong: async () => {
       try {
-        // Get user's IP address from a service (this is client-side)
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
-        const { ip } = await ipResponse.json();
+        // Get device ID
+        const deviceId = getDeviceId();
         
-        if (!ip) {
-          console.error('Could not determine IP address');
+        if (!deviceId) {
+          console.error('Could not determine device ID');
           return null;
         }
         
@@ -26,7 +40,7 @@ export const useVotingStore = createBaseStore<VotingState>(
         const { data, error } = await supabase
           .from('song_votes')
           .select('song_id')
-          .eq('ip_address', ip)
+          .eq('device_id', deviceId)
           .maybeSingle();
           
         if (error) throw error;
@@ -47,12 +61,11 @@ export const useVotingStore = createBaseStore<VotingState>(
       try {
         console.log('Upvoting song:', songId);
         
-        // Get user's IP address
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
-        const { ip } = await ipResponse.json();
+        // Get device ID
+        const deviceId = getDeviceId();
         
-        if (!ip) {
-          toast.error('Could not determine your device. Voting not possible.');
+        if (!deviceId) {
+          toast.error('Could not identify your device. Voting not possible.');
           return;
         }
         
@@ -60,7 +73,7 @@ export const useVotingStore = createBaseStore<VotingState>(
         const { data: existingVotes, error: checkError } = await supabase
           .from('song_votes')
           .select('song_id')
-          .eq('ip_address', ip);
+          .eq('device_id', deviceId);
           
         if (checkError) throw checkError;
         
@@ -80,7 +93,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           .from('song_votes')
           .insert({
             song_id: parseInt(songId),
-            ip_address: ip
+            device_id: deviceId
           });
             
         if (error) throw error;
@@ -92,7 +105,6 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
     },
     
-    // Add the resetVotes function to fix the build error
     resetVotes: async () => {
       try {
         const { error } = await supabase.rpc('reset_all_votes');
