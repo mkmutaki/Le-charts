@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,12 +10,23 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { currentUser } = useAuthStore();
+  const { currentUser, checkAdminStatus } = useAuthStore();
   
-  // If user is already authenticated and is admin, redirect to admin page
-  if (currentUser?.isAdmin) {
-    return <Navigate to="/admin" replace />;
-  }
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (currentUser) {
+        const isAdmin = await checkAdminStatus();
+        
+        if (isAdmin) {
+          navigate('/admin');
+        } else if (currentUser) {
+          toast.error('You do not have admin privileges');
+        }
+      }
+    };
+    
+    checkStatus();
+  }, [currentUser, navigate, checkAdminStatus]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +49,6 @@ const Login = () => {
         return;
       }
       
-      // Wait for the SupabaseListener to update the currentUser
-      // Then the page will redirect if the user is admin
       toast.success('Logged in successfully');
       
     } catch (error) {

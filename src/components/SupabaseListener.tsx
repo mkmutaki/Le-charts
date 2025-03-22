@@ -39,10 +39,10 @@ export const SupabaseListener = () => {
             
             console.log("User authenticated with admin status:", isAdmin);
             
-            if (event === 'SIGNED_IN' && !isAdmin) {
-              toast.error('You do not have admin privileges');
-              // Sign out non-admin users
-              await supabase.auth.signOut();
+            if (event === 'SIGNED_IN') {
+              // We'll let the Login component handle navigation and any messaging
+              // rather than signing out non-admin users here
+              toast.success('Authentication successful');
             }
           } catch (err) {
             console.error('Error in auth listener:', err);
@@ -82,12 +82,6 @@ export const SupabaseListener = () => {
           });
           
           console.log("Session found with admin status:", isAdmin);
-          
-          if (!isAdmin) {
-            toast.error('You do not have admin privileges');
-            // Sign out non-admin users
-            await supabase.auth.signOut();
-          }
         } catch (err) {
           console.error('Error checking session:', err);
           setCurrentUser(null);

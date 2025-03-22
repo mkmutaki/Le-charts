@@ -7,8 +7,8 @@ import { useAuthStore } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { currentUser, logout } = useAuthStore();
-  const isAdmin = currentUser?.isAdmin || false;
+  const { currentUser, logout, checkAdminStatus } = useAuthStore();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,6 +18,19 @@ export const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (currentUser) {
+        const adminStatus = await checkAdminStatus();
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdmin();
+  }, [currentUser, checkAdminStatus]);
   
   const handleLogout = async () => {
     await logout();

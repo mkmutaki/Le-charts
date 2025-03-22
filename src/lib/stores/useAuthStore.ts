@@ -24,12 +24,14 @@ export const useAuthStore = createBaseStore<AuthState>(
           
         if (error) {
           console.error('Error checking admin status:', error);
+          toast.error('Error verifying admin permissions');
           return false;
         }
         
         return Boolean(data);
       } catch (error) {
         console.error('Error checking admin status:', error);
+        toast.error('Error verifying admin permissions');
         return false;
       }
     },
