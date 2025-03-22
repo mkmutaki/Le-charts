@@ -1,66 +1,50 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil } from 'lucide-react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AddSongModal } from '@/components/AddSongModal';
 import { EditSongModal } from '@/components/EditSongModal';
-import { toast } from 'sonner';
 
 const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
-  const { currentUser, checkAdminStatus } = useAuthStore();
+  const { currentUser, checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const navigate = useNavigate();
+  const isAdmin = checkIsAdmin();
   
   useEffect(() => {
-    const checkAuth = async () => {
-      setIsCheckingAuth(true);
-      
-      if (!currentUser) {
-        navigate('/login');
-        return;
-      }
-      
-      try {
-        const adminStatus = await checkAdminStatus();
-        setIsAdmin(adminStatus);
-        
-        if (!adminStatus) {
-          toast.error('You do not have admin privileges');
-          navigate('/');
-        } else {
-          await fetchSongs();
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        toast.error('Error verifying admin permissions');
-        navigate('/');
-      } finally {
-        setIsCheckingAuth(false);
-        setIsLoading(false);
-      }
+    const loadSongs = async () => {
+      await fetchSongs();
+      setIsLoading(false);
     };
     
-    checkAuth();
-  }, [currentUser, navigate, checkAdminStatus, fetchSongs]);
+    loadSongs();
+  }, [fetchSongs]);
   
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
   }
   
-  if (!currentUser || !isAdmin) {
-    return null;
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="bg-destructive/10 text-destructive p-6 rounded-lg max-w-md text-center">
+          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+          <p className="mb-4">You don't have permission to access this page.</p>
+          <Link 
+            to="/"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Return to Chart
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const handleResetVotes = () => {

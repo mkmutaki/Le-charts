@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store';
@@ -10,35 +10,13 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isAdminChecked, setIsAdminChecked] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, checkAdminStatus } = useAuthStore();
+  const { currentUser, checkIsAdmin } = useAuthStore();
   
-  // Check if user is already logged in and is admin
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    const checkAdmin = async () => {
-      // Prevent multiple admin checks
-      if (isAdminChecked) return;
-      
-      try {
-        setIsAdminChecked(true);
-        const isAdmin = await checkAdminStatus();
-        
-        if (isAdmin) {
-          navigate('/admin');
-        } else {
-          toast.error('You do not have admin privileges');
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        toast.error('Error verifying admin permissions');
-      }
-    };
-    
-    checkAdmin();
-  }, [currentUser, navigate, checkAdminStatus, isAdminChecked]);
+  // If user is already authenticated and is admin, redirect to admin page
+  if (currentUser && checkIsAdmin()) {
+    return <Navigate to="/admin" replace />;
+  }
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,8 +40,7 @@ const Login = () => {
       }
       
       toast.success('Logged in successfully');
-      // Navigation will be handled by the useEffect when currentUser updates
-      
+      navigate('/admin');
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');

@@ -58,8 +58,8 @@ export const useSongStore = createBaseStore<SongState>(
         set({ songs, isLoading: false });
       } catch (error) {
         console.error('Error fetching songs:', error);
+        toast.error('Failed to load songs');
         set({ isLoading: false });
-        throw error;
       }
     },
     
