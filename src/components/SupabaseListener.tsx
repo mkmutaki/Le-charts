@@ -38,30 +38,30 @@ export const SupabaseListener = () => {
         
         if (session) {
           const user = session.user;
-          const updatedUser = await updateUserWithAdminStatus(user.id);
           
-          if (updatedUser) {
-            setCurrentUser(updatedUser);
-            console.log("User authenticated with admin status:", updatedUser.isAdmin);
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            const updatedUser = await updateUserWithAdminStatus(user.id);
             
-            if (event === 'SIGNED_IN') {
-              // We'll let the Login component handle navigation and any messaging
-              console.log("Sign in event detected");
+            if (updatedUser) {
+              console.log("User authenticated with admin status:", updatedUser.isAdmin);
+              setCurrentUser(updatedUser);
+            } else {
+              // Don't clear current user on admin check failure
+              console.error("Error checking admin status");
             }
-          } else {
-            setCurrentUser(null);
-            toast.error('Error checking admin status');
           }
-        } else {
-          // No session means the user is signed out
+        } else if (event === 'SIGNED_OUT') {
+          // Only clear user on explicit sign out
           console.log("User signed out");
           setCurrentUser(null);
         }
       }
     );
 
-    // Check for existing session on mount
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // Check for existing session on mount (only once)
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
         const user = session.user;
         const updatedUser = await updateUserWithAdminStatus(user.id);
@@ -69,11 +69,11 @@ export const SupabaseListener = () => {
         if (updatedUser) {
           setCurrentUser(updatedUser);
           console.log("Session found with admin status:", updatedUser.isAdmin);
-        } else {
-          setCurrentUser(null);
         }
       }
-    });
+    };
+    
+    checkExistingSession();
 
     return () => {
       subscription.unsubscribe();

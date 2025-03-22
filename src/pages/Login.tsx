@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store';
@@ -10,6 +10,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdminChecked, setIsAdminChecked] = useState(false);
   const navigate = useNavigate();
   const { currentUser, checkAdminStatus } = useAuthStore();
   
@@ -18,7 +19,11 @@ const Login = () => {
     if (!currentUser) return;
     
     const checkAdmin = async () => {
+      // Prevent multiple admin checks
+      if (isAdminChecked) return;
+      
       try {
+        setIsAdminChecked(true);
         const isAdmin = await checkAdminStatus();
         
         if (isAdmin) {
@@ -28,16 +33,12 @@ const Login = () => {
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
+        toast.error('Error verifying admin permissions');
       }
     };
     
     checkAdmin();
-  }, [currentUser, navigate, checkAdminStatus]);
-  
-  // If already authenticated and has admin status, redirect to admin page
-  if (currentUser) {
-    return null; // We'll let the useEffect handle navigation
-  }
+  }, [currentUser, navigate, checkAdminStatus, isAdminChecked]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,8 +62,7 @@ const Login = () => {
       }
       
       toast.success('Logged in successfully');
-      
-      // Note: navigation will be handled by the useEffect when currentUser updates
+      // Navigation will be handled by the useEffect when currentUser updates
       
     } catch (error) {
       console.error('Login error:', error);

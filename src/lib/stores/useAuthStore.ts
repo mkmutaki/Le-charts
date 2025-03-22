@@ -18,6 +18,11 @@ export const useAuthStore = createBaseStore<AuthState>(
       if (!currentUser) return false;
       
       try {
+        // Check if we already have admin status cached
+        if (typeof currentUser.isAdmin === 'boolean') {
+          return currentUser.isAdmin;
+        }
+        
         const { data, error } = await supabase.rpc('is_admin', {
           user_id: currentUser.id
         });
@@ -30,13 +35,14 @@ export const useAuthStore = createBaseStore<AuthState>(
         
         const isAdmin = Boolean(data);
         
-        // Update the user with the admin status
-        set({ 
-          currentUser: { 
-            ...currentUser, 
-            isAdmin 
-          } 
-        });
+        // Update the user with the admin status - use functional update to avoid 
+        // issues if the state has been updated elsewhere
+        set((state) => ({ 
+          currentUser: state.currentUser ? {
+            ...state.currentUser,
+            isAdmin
+          } : null
+        }));
         
         return isAdmin;
       } catch (error) {
