@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
@@ -175,6 +176,7 @@ export const useSongStore = createBaseStore<SongState>(
       
       try {
         // First delete related votes from song_votes table to avoid FK constraint issues
+        console.log('Deleting votes for song:', songId);
         const { error: votesDeleteError } = await supabase
           .from('song_votes')
           .delete()
@@ -182,10 +184,11 @@ export const useSongStore = createBaseStore<SongState>(
           
         if (votesDeleteError) {
           console.error('Error deleting song votes:', votesDeleteError);
-          // Continue with song deletion even if votes deletion fails
+          throw votesDeleteError;
         }
         
         // Then delete the song
+        console.log('Deleting song:', songId);
         const { error } = await supabase
           .from('LeSongs')
           .delete()

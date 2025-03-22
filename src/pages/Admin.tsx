@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
@@ -9,7 +8,7 @@ import { EditSongModal } from '@/components/EditSongModal';
 
 const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
-  const { resetVotes } = useVotingStore();
+  const { resetVotes, removeVoteForSong } = useVotingStore();
   const { currentUser, checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
@@ -26,7 +25,6 @@ const Admin = () => {
     loadSongs();
   }, [fetchSongs]);
   
-  // If user is not logged in or not an admin, redirect to login
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
@@ -52,12 +50,15 @@ const Admin = () => {
   const handleResetVotes = () => {
     if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
       resetVotes();
+      fetchSongs();
     }
   };
 
-  const handleDeleteSong = (songId: string) => {
+  const handleDeleteSong = async (songId: string) => {
     if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
-      deleteSong(songId);
+      await removeVoteForSong(songId);
+      await deleteSong(songId);
+      fetchSongs();
     }
   };
   

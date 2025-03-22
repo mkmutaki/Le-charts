@@ -8,6 +8,7 @@ interface VotingState extends BaseState {
   upvoteSong: (songId: string) => Promise<void>;
   getUserVotedSong: () => Promise<string | null>;
   resetVotes: () => Promise<void>;
+  removeVoteForSong: (songId: string) => Promise<void>;
 }
 
 // Function to get or create a device ID
@@ -105,11 +106,54 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
     },
     
+    removeVoteForSong: async (songId: string) => {
+      try {
+        const { isAdmin } = get().currentUser || {};
+        
+        if (!isAdmin) {
+          toast.error('Only admins can remove votes');
+          return;
+        }
+        
+        // Remove all votes for the specified song
+        const { error } = await supabase
+          .from('song_votes')
+          .delete()
+          .eq('song_id', parseInt(songId));
+          
+        if (error) throw error;
+        
+        toast.success('Votes removed for this song');
+      } catch (error) {
+        console.error('Error removing votes for song:', error);
+        toast.error('Failed to remove votes');
+      }
+    },
+    
     resetVotes: async () => {
       try {
-        const { error } = await supabase.rpc('reset_all_votes');
+        const { isAdmin } = get().currentUser || {};
         
-        if (error) throw error;
+        if (!isAdmin) {
+          toast.error('Only admins can reset votes');
+          return;
+        }
+        
+        // Delete all votes from song_votes table first
+        const { error: deleteError } = await supabase
+          .from('song_votes')
+          .delete()
+          .neq('id', 0); // This will match all rows
+          
+        if (deleteError) throw deleteError;
+        
+        // Reset vote counts in LeSongs table
+        const { error: updateError } = await supabase
+          .from('LeSongs')
+          .update({ votes: 0, updated_at: new Date().toISOString() })
+          .neq('id', 0); // This will match all rows
+        
+        if (updateError) throw updateError;
         
         toast.success('All votes have been reset');
       } catch (error) {
