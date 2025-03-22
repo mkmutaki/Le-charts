@@ -6,7 +6,7 @@ import { User } from '@/lib/types';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
-  const { setCurrentUser, currentUser } = useAuthStore();
+  const { setCurrentUser } = useAuthStore();
   const hasInitialized = useRef(false);
   const previousAuthId = useRef<string | null>(null);
 
@@ -65,11 +65,11 @@ export const SupabaseListener = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id);
       
-      // Prevent duplicate events for the same user session
       if (event === 'SIGNED_IN' && session?.user && previousAuthId.current !== session.user.id) {
         previousAuthId.current = session.user.id;
         
         try {
+          // Only show toast once
           toast.success('Signed in successfully!');
           
           // Check if the user is an admin by querying the user_roles table
@@ -107,16 +107,13 @@ export const SupabaseListener = () => {
         previousAuthId.current = null;
         toast.info('Signed out successfully');
         setCurrentUser(null);
-      } else if (event === 'TOKEN_REFRESHED' && session?.user && currentUser?.id === session.user.id) {
-        // Avoid re-checking admin status on token refresh for the same user
-        console.log('Token refreshed for existing user - maintaining current state');
       }
     });
     
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser, currentUser]);
+  }, [setCurrentUser]);
   
   return null;
 };

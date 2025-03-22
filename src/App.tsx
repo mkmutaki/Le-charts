@@ -12,8 +12,8 @@ import './App.css';
 
 // Protected route component with improved error handling
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser } = useAuthStore();
-  const isAdmin = currentUser?.isAdmin || false;
+  const { currentUser, checkIsAdmin } = useAuthStore();
+  const isAdmin = checkIsAdmin();
   
   console.log('ProtectedRoute check - currentUser:', currentUser, 'isAdmin:', isAdmin);
   
