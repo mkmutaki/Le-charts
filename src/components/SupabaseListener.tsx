@@ -60,16 +60,20 @@ export const SupabaseListener = () => {
 
     // Check for existing session on mount (only once)
     const checkExistingSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        const user = session.user;
-        const updatedUser = await updateUserWithAdminStatus(user.id);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (updatedUser) {
-          setCurrentUser(updatedUser);
-          console.log("Session found with admin status:", updatedUser.isAdmin);
+        if (session) {
+          const user = session.user;
+          const updatedUser = await updateUserWithAdminStatus(user.id);
+          
+          if (updatedUser) {
+            setCurrentUser(updatedUser);
+            console.log("Session found with admin status:", updatedUser.isAdmin);
+          }
         }
+      } catch (error) {
+        console.error("Error checking existing session:", error);
       }
     };
     
