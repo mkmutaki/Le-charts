@@ -32,9 +32,10 @@ export const useSongStore = createBaseStore<SongState>(
           throw songsError;
         }
         
-        // Fetch votes using the RPC function
+        // Fetch votes - now we need to get ip_address instead of user_id
         const { data: votesData, error: votesError } = await supabase
-          .rpc('get_song_votes');
+          .from('song_votes')
+          .select('song_id, ip_address');
           
         if (votesError) {
           throw votesError;
@@ -43,11 +44,11 @@ export const useSongStore = createBaseStore<SongState>(
         // Convert songs and add votedBy information
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
-          // Add votedBy information from votes
+          // Add votedBy information using IP addresses instead of user IDs
           songObj.votedBy = votesData
             ? votesData
                 .filter(vote => vote.song_id === parseInt(song.id.toString()))
-                .map(vote => vote.user_id)
+                .map(vote => vote.ip_address)
             : [];
           return songObj;
         });
