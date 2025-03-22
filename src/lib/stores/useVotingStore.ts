@@ -6,6 +6,7 @@ import { createBaseStore, BaseState } from './useBaseStore';
 interface VotingState extends BaseState {
   upvoteSong: (songId: string) => Promise<void>;
   getUserVotedSong: () => Promise<string | null>;
+  resetVotes: () => Promise<void>;
 }
 
 export const useVotingStore = createBaseStore<VotingState>(
@@ -88,6 +89,20 @@ export const useVotingStore = createBaseStore<VotingState>(
       } catch (error) {
         console.error('Error voting for song:', error);
         toast.error('Failed to vote for song');
+      }
+    },
+    
+    // Add the resetVotes function to fix the build error
+    resetVotes: async () => {
+      try {
+        const { error } = await supabase.rpc('reset_all_votes');
+        
+        if (error) throw error;
+        
+        toast.success('All votes have been reset');
+      } catch (error) {
+        console.error('Error resetting votes:', error);
+        toast.error('Failed to reset votes');
       }
     },
   }),

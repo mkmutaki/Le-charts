@@ -175,6 +175,18 @@ export const useSongStore = createBaseStore<SongState>(
       }
       
       try {
+        // First delete related votes from song_votes table to avoid FK constraint issues
+        const { error: votesDeleteError } = await supabase
+          .from('song_votes')
+          .delete()
+          .eq('song_id', parseInt(songId));
+          
+        if (votesDeleteError) {
+          console.error('Error deleting song votes:', votesDeleteError);
+          // Continue with song deletion even if votes deletion fails
+        }
+        
+        // Then delete the song
         const { error } = await supabase
           .from('LeSongs')
           .delete()
