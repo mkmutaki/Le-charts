@@ -26,20 +26,19 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     
     try {
       const votedSongId = await getUserVotedSong();
-      setHasVoted(votedSongId === song.id);
+      const hasVotedForThisSong = votedSongId === song.id;
+      setHasVoted(hasVotedForThisSong);
     } catch (error) {
       console.error("Error checking user votes:", error);
       setHasVoted(false);
     }
   };
   
+  // Update when song changes or user changes
   useEffect(() => {
-    // Update vote count when song changes
     setVoteCount(song.votes);
-    
-    // Check user votes when component mounts or song/user changes
     checkUserVotes();
-  }, [currentUser, song]);
+  }, [song, currentUser]);
   
   const handleVoteClick = async () => {
     if (!currentUser || isAnimating) return;
@@ -48,28 +47,24 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     
     try {
       if (hasVoted) {
-        // Optimistically update UI for unlike
-        setVoteCount(prev => Math.max(0, prev - 1));
-        setHasVoted(false);
-        
-        // Call API to update vote
+        // User is removing their vote
         await downvoteSong(song.id);
+        setHasVoted(false);
+        setVoteCount(prev => Math.max(0, prev - 1));
       } else {
-        // Optimistically update UI for like
-        setVoteCount(prev => prev + 1);
-        setHasVoted(true);
-        
-        // Call API to update vote
+        // User is adding a vote
         await upvoteSong(song.id);
+        setHasVoted(true);
+        setVoteCount(prev => prev + 1);
       }
       
-      // Refresh vote status after operation
+      // Make sure our local state is accurate
       await checkUserVotes();
     } catch (error) {
-      // Revert UI if there was an error
       console.error('Error toggling vote:', error);
-      setVoteCount(song.votes);
+      // Ensure UI state is correct by rechecking
       await checkUserVotes();
+      setVoteCount(song.votes);
     } finally {
       setTimeout(() => {
         setIsAnimating(false);
