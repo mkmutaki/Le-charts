@@ -1,16 +1,14 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Music, Shield, LogIn, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { currentUser, checkIsAdmin, logout } = useAuthStore();
-  const navigate = useNavigate();
-  const isAdmin = checkIsAdmin();
+  const { currentUser, logout } = useAuthStore();
+  const isAdmin = currentUser?.isAdmin || false;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,7 +21,6 @@ export const Navbar = () => {
   
   const handleLogout = async () => {
     await logout();
-    navigate('/');
   };
 
   return (

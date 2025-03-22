@@ -11,10 +11,10 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, checkIsAdmin } = useAuthStore();
+  const { currentUser } = useAuthStore();
   
   // If user is already authenticated and is admin, redirect to admin page
-  if (currentUser && checkIsAdmin()) {
+  if (currentUser?.isAdmin) {
     return <Navigate to="/admin" replace />;
   }
   
@@ -39,17 +39,10 @@ const Login = () => {
         return;
       }
       
-      // Check if the user is an admin after successful login
-      const isAdmin = await useAuthStore.getState().checkAdminStatus();
+      // Wait for the SupabaseListener to update the currentUser
+      // Then the page will redirect if the user is admin
+      toast.success('Logged in successfully');
       
-      if (isAdmin) {
-        toast.success('Logged in successfully as admin');
-        navigate('/admin');
-      } else {
-        toast.error('You do not have admin privileges');
-        // Sign out non-admin users
-        await supabase.auth.signOut();
-      }
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');

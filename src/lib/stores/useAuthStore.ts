@@ -27,7 +27,7 @@ export const useAuthStore = createBaseStore<AuthState>(
           return false;
         }
         
-        return data || false;
+        return Boolean(data);
       } catch (error) {
         console.error('Error checking admin status:', error);
         return false;
@@ -54,5 +54,3 @@ export const useAuthStore = createBaseStore<AuthState>(
   }),
   'auth-store'
 );
-
-// Remove the toggleAdminMode function as we'll now rely on proper authentication

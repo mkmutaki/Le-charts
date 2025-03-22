@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/lib/store';
+import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
   const { setCurrentUser } = useAuthStore();
@@ -10,21 +11,46 @@ export const SupabaseListener = () => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state changed:", event);
+        
         if (session) {
           const user = session.user;
           
-          // Get admin status from the database
-          const { data, error } = await supabase.rpc('is_admin', {
-            user_id: user.id
-          });
-          
-          // Update the user in the store
-          setCurrentUser({
-            id: user.id,
-            isAdmin: data || false
-          });
+          try {
+            // Get admin status from the database
+            const { data, error } = await supabase.rpc('is_admin', {
+              user_id: user.id
+            });
+            
+            if (error) {
+              console.error('Error checking admin status:', error);
+              toast.error('Error checking admin status');
+              setCurrentUser(null);
+              return;
+            }
+            
+            const isAdmin = Boolean(data);
+            
+            // Update the user in the store
+            setCurrentUser({
+              id: user.id,
+              isAdmin
+            });
+            
+            console.log("User authenticated with admin status:", isAdmin);
+            
+            if (event === 'SIGNED_IN' && !isAdmin) {
+              toast.error('You do not have admin privileges');
+              // Sign out non-admin users
+              await supabase.auth.signOut();
+            }
+          } catch (err) {
+            console.error('Error in auth listener:', err);
+            setCurrentUser(null);
+          }
         } else {
           // No session means the user is signed out
+          console.log("User signed out");
           setCurrentUser(null);
         }
       }
@@ -35,16 +61,37 @@ export const SupabaseListener = () => {
       if (session) {
         const user = session.user;
         
-        // Get admin status from the database
-        const { data, error } = await supabase.rpc('is_admin', {
-          user_id: user.id
-        });
-        
-        // Update the user in the store
-        setCurrentUser({
-          id: user.id,
-          isAdmin: data || false
-        });
+        try {
+          // Get admin status from the database
+          const { data, error } = await supabase.rpc('is_admin', {
+            user_id: user.id
+          });
+          
+          if (error) {
+            console.error('Error checking admin status:', error);
+            setCurrentUser(null);
+            return;
+          }
+          
+          const isAdmin = Boolean(data);
+          
+          // Update the user in the store
+          setCurrentUser({
+            id: user.id,
+            isAdmin
+          });
+          
+          console.log("Session found with admin status:", isAdmin);
+          
+          if (!isAdmin) {
+            toast.error('You do not have admin privileges');
+            // Sign out non-admin users
+            await supabase.auth.signOut();
+          }
+        } catch (err) {
+          console.error('Error checking session:', err);
+          setCurrentUser(null);
+        }
       }
     });
 
