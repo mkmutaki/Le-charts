@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -184,7 +183,7 @@ export const useVotingStore = createBaseStore<VotingState>(
         
         // User hasn't voted for this song
         if (!existingVotes || existingVotes.length === 0) {
-          toast.error('You haven\'t liked this song yet');
+          toast.info('You haven\'t liked this song yet');
           return;
         }
         
