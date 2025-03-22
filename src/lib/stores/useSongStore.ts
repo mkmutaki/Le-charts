@@ -50,6 +50,14 @@ export const useSongStore = createBaseStore<SongState>(
                 .filter(vote => vote.song_id === song.id)
                 .map(vote => vote.ip_address)
             : [];
+          
+          // Update vote count based on actual entries in song_votes table
+          const actualVotes = votesData
+            ? votesData.filter(vote => vote.song_id === song.id).length
+            : 0;
+          
+          songObj.votes = actualVotes;
+          
           return songObj;
         });
         

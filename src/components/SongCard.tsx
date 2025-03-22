@@ -11,7 +11,7 @@ interface SongCardProps {
 }
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
-  const { upvoteSong, downvoteSong, getUserVotedSong } = useVotingStore();
+  const { upvoteSong, getUserVotedSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
@@ -35,27 +35,24 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   }, [song]);
   
   const handleVoteClick = async () => {
-    if (isAnimating) return;
+    if (isAnimating || hasVoted) return; // Prevent click if already voted or animating
     
     setIsAnimating(true);
     
     try {
-      if (hasVoted) {
-        // User is removing their vote
-        await downvoteSong(song.id);
-        setHasVoted(false);
-        setVoteCount(prev => Math.max(0, prev - 1));
-      } else {
-        // User is adding a vote
-        await upvoteSong(song.id);
+      // User is adding a vote - immutable
+      await upvoteSong(song.id);
+      
+      // Check if the vote was successful
+      const votedSongId = await getUserVotedSong();
+      const wasSuccessful = votedSongId === song.id;
+      
+      if (wasSuccessful) {
         setHasVoted(true);
         setVoteCount(prev => prev + 1);
       }
-      
-      // Make sure our local state is accurate
-      await checkUserVotes();
     } catch (error) {
-      console.error('Error toggling vote:', error);
+      console.error('Error voting:', error);
       // Ensure UI state is correct by rechecking
       await checkUserVotes();
       setVoteCount(song.votes);
@@ -112,16 +109,16 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
           )}
         </div>
         
-        {/* Vote button */}
+        {/* Vote button - now immutable once clicked */}
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleVoteClick}
-            disabled={isAnimating}
+            disabled={isAnimating || hasVoted}
             className={cn(
               "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
-              isAnimating ? "cursor-not-allowed" : "hover:bg-muted"
+              (isAnimating || hasVoted) ? "cursor-not-allowed" : "hover:bg-muted"
             )}
-            aria-label={hasVoted ? `Unlike ${song.title}` : `Like ${song.title}`}
+            aria-label={hasVoted ? `Already liked ${song.title}` : `Like ${song.title}`}
           >
             <Heart 
               className={cn(
@@ -141,3 +138,4 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     </div>
   );
 };
+
