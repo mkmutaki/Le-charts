@@ -11,7 +11,6 @@ interface SongCardProps {
 }
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
-  const { currentUser } = useSongStore();
   const { upvoteSong, downvoteSong, getUserVotedSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
@@ -19,11 +18,6 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   
   // Check if user has voted for this song
   const checkUserVotes = async () => {
-    if (!currentUser) {
-      setHasVoted(false);
-      return;
-    }
-    
     try {
       const votedSongId = await getUserVotedSong();
       const hasVotedForThisSong = votedSongId === song.id;
@@ -38,10 +32,10 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   useEffect(() => {
     setVoteCount(song.votes);
     checkUserVotes();
-  }, [song, currentUser]);
+  }, [song]);
   
   const handleVoteClick = async () => {
-    if (!currentUser || isAnimating) return;
+    if (isAnimating) return;
     
     setIsAnimating(true);
     
@@ -122,7 +116,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleVoteClick}
-            disabled={isAnimating || !currentUser}
+            disabled={isAnimating}
             className={cn(
               "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
               isAnimating ? "cursor-not-allowed" : "hover:bg-muted"

@@ -44,22 +44,25 @@ export type Database = {
       }
       song_votes: {
         Row: {
-          created_at: string | null
-          id: string
-          song_id: number | null
-          user_id: string
+          id: number
+          ip_address: string
+          song_id: number
+          vote_date: string | null
+          voted_at: string | null
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          song_id?: number | null
-          user_id: string
+          id?: number
+          ip_address: string
+          song_id: number
+          vote_date?: string | null
+          voted_at?: string | null
         }
         Update: {
-          created_at?: string | null
-          id?: string
-          song_id?: number | null
-          user_id?: string
+          id?: number
+          ip_address?: string
+          song_id?: number
+          vote_date?: string | null
+          voted_at?: string | null
         }
         Relationships: [
           {
