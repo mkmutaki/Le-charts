@@ -53,28 +53,11 @@ export const Navbar = () => {
               <Shield className="h-3.5 w-3.5" />
               {isAdmin ? "Admin Mode" : "User Mode"}
             </button>
-            
-            {/* Add Song button - only visible to admins */}
-            {isAdmin && (
-              <button
-                onClick={() => setIsAddSongOpen(true)}
-                className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium shadow-sm hover:opacity-90 transition-all duration-200 active:scale-95"
-                aria-label="Add song"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Song</span>
-              </button>
-            )}
           </div>
         </div>
       </header>
       
       <div className="h-16" /> {/* Spacer for fixed header */}
-      
-      <AddSongModal 
-        isOpen={isAddSongOpen} 
-        onClose={() => setIsAddSongOpen(false)} 
-      />
     </>
   );
 };
