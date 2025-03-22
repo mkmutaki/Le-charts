@@ -5,6 +5,7 @@ import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const Index = () => {
   const { songs, fetchSongs } = useSongStore();
@@ -39,6 +40,13 @@ const Index = () => {
       window.removeEventListener('scroll', handleScroll);
     };
   }, [fetchSongs]);
+  
+  // Handle empty state add button - redirect to login since only admins can add songs
+  const handleEmptyStateAddClick = () => {
+    toast.info("Only administrators can add songs. Please login if you are an admin.");
+    // Option: navigate to login
+    // window.location.href = '/login';
+  };
   
   return (
     <div className={cn(
@@ -76,7 +84,7 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <EmptyState />
+            <EmptyState onAddClick={handleEmptyStateAddClick} />
           )}
         </div>
       </main>
