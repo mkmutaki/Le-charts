@@ -69,9 +69,6 @@ export const SupabaseListener = () => {
         previousAuthId.current = session.user.id;
         
         try {
-          // Only show toast once
-          toast.success('Signed in successfully!');
-          
           // Check if the user is an admin by querying the user_roles table
           const { data, error } = await supabase
             .from('user_roles')
@@ -93,6 +90,7 @@ export const SupabaseListener = () => {
           };
           
           setCurrentUser(user);
+          toast.success('Signed in successfully!');
         } catch (error) {
           console.error('Error setting user after sign in:', error);
           // Set a basic non-admin user on error to prevent white screen

@@ -39,6 +39,7 @@ const Admin = () => {
     loadSongs();
   }, [fetchSongs, isAdmin]);
 
+  // If not admin, don't render anything (the ProtectedRoute in App.tsx should handle redirection)
   if (!isAdmin) {
     return (
       <div className="p-8 text-center">

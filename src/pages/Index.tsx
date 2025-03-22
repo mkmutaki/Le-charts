@@ -1,19 +1,15 @@
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSongStore, useAuthStore, useVotingStore } from '@/lib/store';
-import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
-import { AddSongModal } from '@/components/AddSongModal';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 
 const Index = () => {
   const { songs, fetchSongs } = useSongStore();
-  const { checkIsAdmin } = useAuthStore();
-  const { resetVotes } = useVotingStore();
-  const [isAddSongOpen, setIsAddSongOpen] = useState(false);
+  const { currentUser, checkIsAdmin } = useAuthStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,18 +43,48 @@ const Index = () => {
     };
   }, [fetchSongs]);
   
-  const handleResetVotes = () => {
-    if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
-      resetVotes();
-    }
-  };
-  
   return (
     <div className={cn(
       "min-h-screen transition-opacity duration-500",
       isPageLoaded ? "opacity-100" : "opacity-0"
     )}>
-      <Navbar />
+      <header className="fixed top-0 left-0 right-0 z-50 py-4 px-4 md:px-8 transition-all duration-300 glass-effect shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="h-6 w-6 text-primary"
+            >
+              <path d="M9 18V5l12-2v13"/>
+              <circle cx="6" cy="18" r="3"/>
+              <circle cx="18" cy="16" r="3"/>
+            </svg>
+            <h1 className="text-xl font-semibold tracking-tight">
+              MusicChart
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-amber-100 text-amber-800"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                Admin Dashboard
+              </Link>
+            )}
+          </div>
+        </div>
+      </header>
+      
+      <div className="h-16" /> {/* Spacer for fixed header */}
       
       <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">
         <div className="mb-8 md:mb-12">
@@ -70,28 +96,6 @@ const Index = () => {
               <p className="text-muted-foreground mt-2">
                 Vote for your favorite LeSongs
               </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {isAdmin && songs.length > 0 && (
-                <button
-                  onClick={handleResetVotes}
-                  className="flex items-center gap-1.5 bg-muted text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Reset Votes</span>
-                </button>
-              )}
-              
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-1.5 bg-muted/50 text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
-                >
-                  <Shield className="h-4 w-4" />
-                  <span>Admin</span>
-                </Link>
-              )}
             </div>
           </div>
           
@@ -111,7 +115,7 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <EmptyState onAddClick={() => isAdmin ? setIsAddSongOpen(true) : null} />
+            <EmptyState onAddClick={() => null} />
           )}
         </div>
       </main>
@@ -139,13 +143,6 @@ const Index = () => {
           <path d="m18 15-6-6-6 6"/>
         </svg>
       </button>
-      
-      {isAdmin && (
-        <AddSongModal 
-          isOpen={isAddSongOpen} 
-          onClose={() => setIsAddSongOpen(false)} 
-        />
-      )}
     </div>
   );
 };
