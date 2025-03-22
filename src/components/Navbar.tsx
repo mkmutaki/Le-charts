@@ -1,16 +1,14 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Music, Plus, Shield, LogIn, LogOut } from 'lucide-react';
+import { Music, Shield, LogIn, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useSongStore, useAuthStore, toggleAdminMode } from '@/lib/store';
+import { useAuthStore } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { currentUser } = useSongStore();
-  const { checkIsAdmin } = useAuthStore();
+  const { currentUser, checkIsAdmin, logout } = useAuthStore();
   const navigate = useNavigate();
   const isAdmin = checkIsAdmin();
 
@@ -24,14 +22,7 @@ export const Navbar = () => {
   }, []);
   
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      toast.error('Error signing out');
-      return;
-    }
-    
-    toast.success('Signed out successfully');
+    await logout();
     navigate('/');
   };
 
@@ -56,21 +47,7 @@ export const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Admin mode toggle (development only) */}
-            <button
-              onClick={toggleAdminMode}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                isAdmin 
-                  ? "bg-amber-100 text-amber-800" 
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              <Shield className="h-3.5 w-3.5" />
-              {isAdmin ? "Admin Mode" : "User Mode"}
-            </button>
-            
-            {isAdmin ? (
+            {isAdmin && (
               <>
                 <Link
                   to="/admin"
@@ -88,7 +65,9 @@ export const Navbar = () => {
                   <span>Logout</span>
                 </button>
               </>
-            ) : (
+            )}
+            
+            {!currentUser && (
               <Link
                 to="/login"
                 className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-colors"

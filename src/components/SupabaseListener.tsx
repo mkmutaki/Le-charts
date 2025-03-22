@@ -1,6 +1,5 @@
 
 import { useEffect } from 'react';
-import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/lib/store';
 

@@ -2,15 +2,16 @@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '../types';
-import { createBaseStore, BaseState, dummyUser, dummyAdmin } from './useBaseStore';
+import { createBaseStore, BaseState } from './useBaseStore';
 
 interface AuthState extends BaseState {
   checkAdminStatus: () => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 export const useAuthStore = createBaseStore<AuthState>(
   (set, get) => ({
-    // New function to check admin status from the database
+    // Function to check admin status from the database
     checkAdminStatus: async () => {
       const { currentUser } = get();
       
@@ -32,19 +33,26 @@ export const useAuthStore = createBaseStore<AuthState>(
         return false;
       }
     },
+    
+    // Add a logout function
+    logout: async () => {
+      try {
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          toast.error('Error signing out');
+          throw error;
+        }
+        
+        set({ currentUser: null });
+        toast.success('Signed out successfully');
+      } catch (error) {
+        console.error('Error during logout:', error);
+        toast.error('Failed to sign out');
+      }
+    }
   }),
   'auth-store'
 );
 
-// For development testing: Function to toggle between admin and regular user
-export const toggleAdminMode = () => {
-  const { currentUser, setCurrentUser } = useAuthStore.getState();
-  
-  if (currentUser?.isAdmin) {
-    setCurrentUser(dummyUser);
-    toast.info('Switched to regular user mode');
-  } else {
-    setCurrentUser(dummyAdmin);
-    toast.info('Switched to admin mode');
-  }
-};
+// Remove the toggleAdminMode function as we'll now rely on proper authentication

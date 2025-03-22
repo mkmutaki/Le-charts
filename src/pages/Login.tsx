@@ -39,8 +39,17 @@ const Login = () => {
         return;
       }
       
-      toast.success('Logged in successfully');
-      navigate('/admin');
+      // Check if the user is an admin after successful login
+      const isAdmin = await useAuthStore.getState().checkAdminStatus();
+      
+      if (isAdmin) {
+        toast.success('Logged in successfully as admin');
+        navigate('/admin');
+      } else {
+        toast.error('You do not have admin privileges');
+        // Sign out non-admin users
+        await supabase.auth.signOut();
+      }
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');
