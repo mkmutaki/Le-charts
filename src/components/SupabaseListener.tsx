@@ -6,46 +6,15 @@ import { User } from '@/lib/types';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
-  const { setCurrentUser } = useAuthStore();
+  const { setCurrentUser, currentUser } = useAuthStore();
   const hasInitialized = useRef(false);
   const previousAuthId = useRef<string | null>(null);
-  const isCheckingAdmin = useRef(false);
-
-  // Function to check admin status
-  const checkAdminStatus = async (userId: string): Promise<boolean> => {
-    if (!userId || isCheckingAdmin.current) return false;
-    
-    isCheckingAdmin.current = true;
-    try {
-      console.log('Checking admin status for user:', userId);
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('is_admin')
-        .eq('user_id', userId)
-        .single();
-        
-      isCheckingAdmin.current = false;
-      
-      if (error) {
-        console.error('Error checking admin status:', error);
-        return false;
-      }
-      
-      const isAdmin = data?.is_admin || false;
-      console.log('Admin status result:', isAdmin);
-      return isAdmin;
-    } catch (error) {
-      console.error('Exception checking admin status:', error);
-      isCheckingAdmin.current = false;
-      return false;
-    }
-  };
 
   useEffect(() => {
-    // Only initialize once
-    if (hasInitialized.current) return;
-    
+    // Check for the existing session
     const initializeAuth = async () => {
+      if (hasInitialized.current) return;
+      
       try {
         console.log('Initializing auth session...');
         const { data: { session } } = await supabase.auth.getSession();
@@ -54,7 +23,20 @@ export const SupabaseListener = () => {
           console.log('Session found, setting user:', session.user.id);
           previousAuthId.current = session.user.id;
           
-          const isAdmin = await checkAdminStatus(session.user.id);
+          // Check if the user is an admin by querying the user_roles table directly
+          const { data, error } = await supabase
+            .from('user_roles')
+            .select('is_admin')
+            .eq('user_id', session.user.id)
+            .single();
+            
+          if (error) {
+            console.error('Error checking admin status:', error);
+            // Continue with non-admin user rather than failing
+          }
+          
+          const isAdmin = data?.is_admin || false;
+          console.log('User admin status:', isAdmin, 'based on data:', data);
           
           const user: User = {
             id: session.user.id,
@@ -63,13 +45,16 @@ export const SupabaseListener = () => {
           
           setCurrentUser(user);
         } else {
+          // No session found, ensure user is null
           console.log('No session found, setting user to null');
           setCurrentUser(null);
         }
+        
+        hasInitialized.current = true;
       } catch (error) {
         console.error('Auth initialization error:', error);
+        // Set current user to null on error to prevent infinite loading
         setCurrentUser(null);
-      } finally {
         hasInitialized.current = true;
       }
     };
@@ -80,14 +65,27 @@ export const SupabaseListener = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id);
       
+      // Prevent duplicate events for the same user session
       if (event === 'SIGNED_IN' && session?.user && previousAuthId.current !== session.user.id) {
         previousAuthId.current = session.user.id;
         
         try {
-          // Only show toast once per sign-in
           toast.success('Signed in successfully!');
           
-          const isAdmin = await checkAdminStatus(session.user.id);
+          // Check if the user is an admin by querying the user_roles table
+          const { data, error } = await supabase
+            .from('user_roles')
+            .select('is_admin')
+            .eq('user_id', session.user.id)
+            .single();
+            
+          if (error) {
+            console.error('Error checking admin status on sign in:', error);
+            // Continue with non-admin user rather than failing
+          }
+          
+          const isAdmin = data?.is_admin || false;
+          console.log('User admin status on sign in:', isAdmin, 'based on data:', data);
           
           const user: User = {
             id: session.user.id,
@@ -97,6 +95,7 @@ export const SupabaseListener = () => {
           setCurrentUser(user);
         } catch (error) {
           console.error('Error setting user after sign in:', error);
+          // Set a basic non-admin user on error to prevent white screen
           if (session?.user) {
             setCurrentUser({
               id: session.user.id,
@@ -108,13 +107,16 @@ export const SupabaseListener = () => {
         previousAuthId.current = null;
         toast.info('Signed out successfully');
         setCurrentUser(null);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user && currentUser?.id === session.user.id) {
+        // Avoid re-checking admin status on token refresh for the same user
+        console.log('Token refreshed for existing user - maintaining current state');
       }
     });
     
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser]);
+  }, [setCurrentUser, currentUser]);
   
   return null;
 };
