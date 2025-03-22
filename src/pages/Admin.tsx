@@ -8,7 +8,7 @@ import { EditSongModal } from '@/components/EditSongModal';
 
 const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
-  const { resetVotes, removeVoteForSong } = useVotingStore();
+  const { resetVotes } = useVotingStore();
   const { currentUser, checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
@@ -56,7 +56,6 @@ const Admin = () => {
 
   const handleDeleteSong = async (songId: string) => {
     if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
-      await removeVoteForSong(songId);
       await deleteSong(songId);
       fetchSongs();
     }

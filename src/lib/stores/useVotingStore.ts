@@ -108,12 +108,13 @@ export const useVotingStore = createBaseStore<VotingState>(
     
     removeVoteForSong: async (songId: string) => {
       try {
-        const { isAdmin } = get().currentUser || {};
-        
-        if (!isAdmin) {
+        // Using checkIsAdmin() directly to ensure we're checking the current state
+        if (!get().checkIsAdmin()) {
           toast.error('Only admins can remove votes');
           return;
         }
+        
+        console.log('Removing votes for song:', songId);
         
         // Remove all votes for the specified song
         const { error } = await supabase
@@ -132,12 +133,13 @@ export const useVotingStore = createBaseStore<VotingState>(
     
     resetVotes: async () => {
       try {
-        const { isAdmin } = get().currentUser || {};
-        
-        if (!isAdmin) {
+        // Using checkIsAdmin() directly to ensure we're checking the current state
+        if (!get().checkIsAdmin()) {
           toast.error('Only admins can reset votes');
           return;
         }
+        
+        console.log('Resetting all votes');
         
         // Delete all votes from song_votes table first
         const { error: deleteError } = await supabase

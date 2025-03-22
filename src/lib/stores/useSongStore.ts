@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
@@ -21,7 +20,6 @@ export const useSongStore = createBaseStore<SongState>(
       set({ isLoading: true });
       
       try {
-        // Fetch songs from Supabase
         const { data: songsData, error: songsError } = await supabase
           .from('LeSongs')
           .select('*')
@@ -32,7 +30,6 @@ export const useSongStore = createBaseStore<SongState>(
           throw songsError;
         }
         
-        // Fetch votes - using the song_votes table directly with the device_id
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
           .select('song_id, device_id');
@@ -41,17 +38,14 @@ export const useSongStore = createBaseStore<SongState>(
           throw votesError;
         }
         
-        // Convert songs and add votedBy information
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
-          // Add votedBy information using device IDs
           songObj.votedBy = votesData
             ? votesData
                 .filter(vote => vote.song_id === song.id)
                 .map(vote => vote.device_id)
             : [];
           
-          // Update vote count based on actual entries in song_votes table
           const actualVotes = votesData
             ? votesData.filter(vote => vote.song_id === song.id).length
             : 0;
@@ -70,16 +64,14 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     addSong: async (songData: SongFormData) => {
-      const { currentUser } = get();
-      
-      if (!currentUser?.isAdmin) {
+      if (!get().checkIsAdmin()) {
         toast.error('Only admins can add songs');
         return;
       }
       
       try {
         console.log('Adding song with data:', songData);
-        console.log('Current user:', currentUser);
+        console.log('Is admin check passed:', get().checkIsAdmin());
         
         const { data, error } = await supabase
           .from('LeSongs')
@@ -101,7 +93,7 @@ export const useSongStore = createBaseStore<SongState>(
         
         if (data) {
           const newSong = convertSupabaseSong(data);
-          newSong.votedBy = []; // Initialize empty votedBy array for new song
+          newSong.votedBy = [];
           
           set((state) => ({ 
             songs: [...state.songs, newSong] 
@@ -118,15 +110,12 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     updateSong: async (songId: string, songData: SongFormData) => {
-      const { currentUser } = get();
-      
-      if (!currentUser?.isAdmin) {
+      if (!get().checkIsAdmin()) {
         toast.error('Only admins can update songs');
         return;
       }
       
       try {
-        // Update the song in the database
         const { error } = await supabase
           .from('LeSongs')
           .update({
@@ -142,7 +131,6 @@ export const useSongStore = createBaseStore<SongState>(
           throw error;
         }
         
-        // Update the song in the local state
         set((state) => ({
           songs: state.songs.map(song => 
             song.id === songId
@@ -152,7 +140,7 @@ export const useSongStore = createBaseStore<SongState>(
                   artist: songData.artist,
                   coverUrl: songData.coverUrl || '',
                   songUrl: songData.songUrl || '',
-                  addedAt: new Date() // Update the timestamp
+                  addedAt: new Date()
                 }
               : song
           )
@@ -167,16 +155,12 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     deleteSong: async (songId: string) => {
-      const { currentUser } = get();
-      
-      if (!currentUser?.isAdmin) {
+      if (!get().checkIsAdmin()) {
         toast.error('Only admins can delete songs');
         return;
       }
       
       try {
-        // First delete related votes from song_votes table to avoid FK constraint issues
-        console.log('Deleting votes for song:', songId);
         const { error: votesDeleteError } = await supabase
           .from('song_votes')
           .delete()
@@ -187,8 +171,6 @@ export const useSongStore = createBaseStore<SongState>(
           throw votesDeleteError;
         }
         
-        // Then delete the song
-        console.log('Deleting song:', songId);
         const { error } = await supabase
           .from('LeSongs')
           .delete()
