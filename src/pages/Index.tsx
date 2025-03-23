@@ -12,7 +12,6 @@ const Index = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   // Songs are already sorted by votes and then by updated_at in the fetchSongs function
   const sortedSongs = songs;
@@ -20,20 +19,13 @@ const Index = () => {
   useEffect(() => {
     // Load songs when the component mounts
     const loadData = async () => {
-      try {
-        await fetchSongs();
-      } catch (err) {
-        console.error('Error fetching songs:', err);
-        setError('Failed to load songs. Please try again later.');
-        toast.error('Failed to load songs');
-      } finally {
-        setIsLoading(false);
-        
-        // Set page as loaded after a short delay to allow for animation
-        setTimeout(() => {
-          setIsPageLoaded(true);
-        }, 300);
-      }
+      await fetchSongs();
+      setIsLoading(false);
+      
+      // Set page as loaded after a short delay to allow for animation
+      setTimeout(() => {
+        setIsPageLoaded(true);
+      }, 300);
     };
     
     loadData();
@@ -81,17 +73,7 @@ const Index = () => {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : error ? (
-            <div className="py-8 text-center">
-              <div className="text-destructive mb-2">{error}</div>
-              <button 
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          ) : sortedSongs && sortedSongs.length > 0 ? (
+          ) : sortedSongs.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
               {sortedSongs.map((song, index) => (
                 <SongCard 
