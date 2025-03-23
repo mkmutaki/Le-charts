@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
@@ -20,6 +21,7 @@ export const useSongStore = createBaseStore<SongState>(
       set({ isLoading: true });
       
       try {
+        // Fetch songs from the database
         const { data: songsData, error: songsError } = await supabase
           .from('LeSongs')
           .select('*')
@@ -30,6 +32,12 @@ export const useSongStore = createBaseStore<SongState>(
           throw songsError;
         }
         
+        if (!songsData) {
+          set({ songs: [], isLoading: false });
+          return;
+        }
+        
+        // Fetch votes for songs
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
           .select('song_id, device_id');
@@ -38,18 +46,23 @@ export const useSongStore = createBaseStore<SongState>(
           throw votesError;
         }
         
+        // Map songs with their votes
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
+          
+          // Set voted by array
           songObj.votedBy = votesData
             ? votesData
                 .filter(vote => vote.song_id === song.id)
                 .map(vote => vote.device_id)
             : [];
           
+          // Count actual votes from the song_votes table
           const actualVotes = votesData
             ? votesData.filter(vote => vote.song_id === song.id).length
             : 0;
           
+          // Use actual votes count or fallback to the votes stored in the song record
           songObj.votes = actualVotes;
           
           return songObj;
@@ -59,7 +72,7 @@ export const useSongStore = createBaseStore<SongState>(
       } catch (error) {
         console.error('Error fetching songs:', error);
         toast.error('Failed to load songs');
-        set({ isLoading: false });
+        set({ isLoading: false, songs: [] });
       }
     },
     
@@ -71,7 +84,6 @@ export const useSongStore = createBaseStore<SongState>(
       
       try {
         console.log('Adding song with data:', songData);
-        console.log('Is admin check passed:', get().checkIsAdmin());
         
         const { data, error } = await supabase
           .from('LeSongs')
@@ -163,6 +175,18 @@ export const useSongStore = createBaseStore<SongState>(
       try {
         console.log('Attempting to delete song with ID:', songId);
         
+        // First, remove all votes for the song
+        const { error: voteError } = await supabase
+          .from('song_votes')
+          .delete()
+          .eq('song_id', parseInt(songId));
+        
+        if (voteError) {
+          console.error('Error deleting song votes:', voteError);
+          // Continue with song deletion even if vote deletion fails
+        }
+        
+        // Then delete the song
         const { error } = await supabase
           .from('LeSongs')
           .delete()

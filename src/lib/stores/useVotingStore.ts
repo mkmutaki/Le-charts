@@ -78,7 +78,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           
         if (checkError) throw checkError;
         
-        // User already voted for a song - votes are immutable
+        // User already voted for a song
         if (existingVotes && existingVotes.length > 0) {
           const currentVotedSongId = existingVotes[0].song_id.toString();
           if (currentVotedSongId === songId) {

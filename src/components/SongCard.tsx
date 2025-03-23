@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
@@ -39,7 +40,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     setIsAnimating(true);
     
     try {
-      // User is adding a vote - immutable
+      // User is adding a vote
       await upvoteSong(song.id);
       
       // Check if the vote was successful
@@ -108,7 +109,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
           )}
         </div>
         
-        {/* Vote button - now immutable once clicked */}
+        {/* Vote button */}
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleVoteClick}

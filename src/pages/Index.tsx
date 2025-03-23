@@ -19,13 +19,19 @@ const Index = () => {
   useEffect(() => {
     // Load songs when the component mounts
     const loadData = async () => {
-      await fetchSongs();
-      setIsLoading(false);
-      
-      // Set page as loaded after a short delay to allow for animation
-      setTimeout(() => {
-        setIsPageLoaded(true);
-      }, 300);
+      try {
+        await fetchSongs();
+      } catch (error) {
+        console.error("Error loading songs:", error);
+        toast.error("Failed to load songs");
+      } finally {
+        setIsLoading(false);
+        
+        // Set page as loaded after a short delay to allow for animation
+        setTimeout(() => {
+          setIsPageLoaded(true);
+        }, 300);
+      }
     };
     
     loadData();
