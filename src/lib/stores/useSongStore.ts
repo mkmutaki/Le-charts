@@ -20,6 +20,7 @@ export const useSongStore = createBaseStore<SongState>(
       set({ isLoading: true });
       
       try {
+        console.log('Fetching songs...');
         const { data: songsData, error: songsError } = await supabase
           .from('LeSongs')
           .select('*')
@@ -27,16 +28,22 @@ export const useSongStore = createBaseStore<SongState>(
           .order('updated_at', { ascending: false });
           
         if (songsError) {
+          console.error('Error fetching songs:', songsError);
           throw songsError;
         }
+        
+        console.log('Songs data:', songsData);
         
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
           .select('song_id, device_id');
           
         if (votesError) {
+          console.error('Error fetching votes:', votesError);
           throw votesError;
         }
+        
+        console.log('Votes data:', votesData);
         
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
@@ -50,16 +57,17 @@ export const useSongStore = createBaseStore<SongState>(
             ? votesData.filter(vote => vote.song_id === song.id).length
             : 0;
           
-          songObj.votes = actualVotes;
+          songObj.votes = song.votes || actualVotes;
           
           return songObj;
         });
         
+        console.log('Processed songs:', songs);
         set({ songs, isLoading: false });
       } catch (error) {
         console.error('Error fetching songs:', error);
         toast.error('Failed to load songs');
-        set({ isLoading: false });
+        set({ isLoading: false, songs: [] });
       }
     },
     

@@ -8,24 +8,34 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const Index = () => {
+  console.log('Index component rendering');
   const { songs, fetchSongs } = useSongStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Songs are already sorted by votes and then by updated_at in the fetchSongs function
   const sortedSongs = songs;
   
   useEffect(() => {
+    console.log('Index useEffect running');
     // Load songs when the component mounts
     const loadData = async () => {
-      await fetchSongs();
-      setIsLoading(false);
-      
-      // Set page as loaded after a short delay to allow for animation
-      setTimeout(() => {
-        setIsPageLoaded(true);
-      }, 300);
+      try {
+        setError(null);
+        await fetchSongs();
+        setIsLoading(false);
+        
+        // Set page as loaded after a short delay to allow for animation
+        setTimeout(() => {
+          setIsPageLoaded(true);
+        }, 300);
+      } catch (err) {
+        console.error('Error loading songs:', err);
+        setError('Failed to load songs. Please try again.');
+        setIsLoading(false);
+      }
     };
     
     loadData();
@@ -47,10 +57,22 @@ const Index = () => {
     // Option: navigate to login
     // window.location.href = '/login';
   };
+
+  const handleRetry = async () => {
+    setIsLoading(true);
+    try {
+      await fetchSongs();
+      setError(null);
+    } catch (err) {
+      setError('Failed to load songs. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   return (
     <div className={cn(
-      "min-h-screen transition-opacity duration-500",
+      "min-h-screen bg-background text-foreground transition-opacity duration-500",
       isPageLoaded ? "opacity-100" : "opacity-0"
     )}>
       <Navbar />
@@ -72,6 +94,16 @@ const Index = () => {
           {isLoading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-red-500 mb-4">{error}</p>
+              <button 
+                onClick={handleRetry}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              >
+                Retry
+              </button>
             </div>
           ) : sortedSongs.length > 0 ? (
             <div className="space-y-3 md:space-y-4">

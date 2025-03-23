@@ -10,6 +10,7 @@ import { SupabaseListener } from './components/SupabaseListener';
 import './App.css';
 
 function App() {
+  console.log('App is rendering');
   return (
     <BrowserRouter>
       <SupabaseListener />
