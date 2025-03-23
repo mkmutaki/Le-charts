@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/lib/store';
+import { dummyUser, dummyAdmin } from '@/lib/stores/useBaseStore';
 
 export const SupabaseListener = () => {
-  const { setCurrentUser } = useAuthStore();
+  const { setCurrentUser, currentUser } = useAuthStore();
 
   useEffect(() => {
     // Set up auth state listener
@@ -33,10 +34,9 @@ export const SupabaseListener = () => {
               isAdmin: data || false
             });
           } else {
-            // No session means the user is signed out
             // For development, we'll keep the dummy user instead of setting to null
-            // setCurrentUser(null);
-            console.log("Auth state changed - No session, but keeping dummy user for development");
+            // We don't need to set it here as it's already the default in the store
+            console.log("Auth state changed - No session, keeping dummy user for development");
           }
         } catch (error) {
           console.error("Error in auth state change handler:", error);
@@ -71,17 +71,21 @@ export const SupabaseListener = () => {
           });
         } else {
           // Keep using the dummy user from the store for development
-          console.log("No session found, but keeping dummy user for development");
+          console.log("No session found, keeping dummy user from store for development");
+          // We don't need to explicitly set it here as it's already the default
         }
       } catch (error) {
         console.error("Error in session check:", error);
       }
     });
 
+    // Log the current user to help with debugging
+    console.log("Current user in SupabaseListener at initialization:", currentUser);
+
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser]);
+  }, [setCurrentUser, currentUser]);
 
   return null;
 };

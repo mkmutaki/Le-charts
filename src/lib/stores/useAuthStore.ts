@@ -40,11 +40,22 @@ export const useAuthStore = createBaseStore<AuthState>(
 export const toggleAdminMode = () => {
   const { currentUser, setCurrentUser } = useAuthStore.getState();
   
+  console.log("Toggle admin mode - Current user before toggle:", currentUser);
+  
   if (currentUser?.isAdmin) {
     setCurrentUser(dummyUser);
+    console.log("Switched to regular user mode", dummyUser);
     toast.info('Switched to regular user mode');
   } else {
     setCurrentUser(dummyAdmin);
+    console.log("Switched to admin mode", dummyAdmin);
     toast.info('Switched to admin mode');
   }
+  
+  // Log the updated state to confirm
+  setTimeout(() => {
+    const { currentUser: updatedUser, checkIsAdmin } = useAuthStore.getState();
+    const isAdminNow = checkIsAdmin();
+    console.log("User after toggle:", updatedUser, "Is admin now:", isAdminNow);
+  }, 100);
 };

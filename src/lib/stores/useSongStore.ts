@@ -73,10 +73,12 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     addSong: async (songData: SongFormData) => {
-      const isAdmin = get().currentUser?.isAdmin;
+      // Direct check for admin status
+      const { currentUser } = get();
+      const isAdmin = currentUser?.isAdmin === true;
       
-      console.log('Current user:', get().currentUser);
-      console.log('Is admin?', isAdmin);
+      console.log('Current user in addSong:', currentUser);
+      console.log('Is admin in addSong check?', isAdmin);
       
       if (!isAdmin) {
         toast.error('Only admins can add songs');
@@ -123,7 +125,11 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     updateSong: async (songId: string, songData: SongFormData) => {
-      if (!get().checkIsAdmin()) {
+      // Direct check for admin status
+      const { currentUser } = get();
+      const isAdmin = currentUser?.isAdmin === true;
+      
+      if (!isAdmin) {
         toast.error('Only admins can update songs');
         return;
       }
@@ -168,7 +174,11 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     deleteSong: async (songId: string) => {
-      if (!get().checkIsAdmin()) {
+      // Direct check for admin status
+      const { currentUser } = get();
+      const isAdmin = currentUser?.isAdmin === true;
+      
+      if (!isAdmin) {
         toast.error('Only admins can delete songs');
         return;
       }

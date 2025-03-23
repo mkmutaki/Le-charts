@@ -40,7 +40,12 @@ export const createBaseStore = <T extends BaseState>(
         
         checkIsAdmin: () => {
           const { currentUser } = get();
-          const isAdmin = currentUser?.isAdmin || false;
+          if (!currentUser) {
+            console.log("checkIsAdmin: No user found");
+            return false;
+          }
+          
+          const isAdmin = !!currentUser.isAdmin;
           console.log("Checking isAdmin:", isAdmin, "Current user:", currentUser);
           return isAdmin;
         },
