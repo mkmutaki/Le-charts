@@ -38,7 +38,7 @@ export const useSongStore = createBaseStore<SongState>(
           throw votesError;
         }
         
-        const songs = songsData ? songsData.map(song => {
+        const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
           songObj.votedBy = votesData
             ? votesData
@@ -53,13 +53,13 @@ export const useSongStore = createBaseStore<SongState>(
           songObj.votes = actualVotes;
           
           return songObj;
-        }) : [];
+        });
         
         set({ songs, isLoading: false });
       } catch (error) {
         console.error('Error fetching songs:', error);
         toast.error('Failed to load songs');
-        set({ isLoading: false, songs: [] });
+        set({ isLoading: false });
       }
     },
     
