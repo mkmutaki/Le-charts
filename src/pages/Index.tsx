@@ -19,13 +19,18 @@ const Index = () => {
   useEffect(() => {
     // Load songs when the component mounts
     const loadData = async () => {
-      await fetchSongs();
-      setIsLoading(false);
-      
-      // Set page as loaded after a short delay to allow for animation
-      setTimeout(() => {
-        setIsPageLoaded(true);
-      }, 300);
+      try {
+        await fetchSongs();
+      } catch (error) {
+        console.error('Error loading songs:', error);
+      } finally {
+        setIsLoading(false);
+        
+        // Set page as loaded after a short delay to allow for animation
+        setTimeout(() => {
+          setIsPageLoaded(true);
+        }, 300);
+      }
     };
     
     loadData();
@@ -43,9 +48,7 @@ const Index = () => {
   
   // Handle empty state add button - redirect to login since only admins can add songs
   const handleEmptyStateAddClick = () => {
-    toast.info("Only administrators can add songs. Please login if you are an admin.");
-    // Option: navigate to login
-    // window.location.href = '/login';
+    toast.info("Only administrators can add songs. Please toggle admin mode in the navbar.");
   };
   
   return (
