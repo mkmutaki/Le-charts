@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
@@ -20,6 +21,7 @@ export const useSongStore = createBaseStore<SongState>(
       set({ isLoading: true });
       
       try {
+        console.log('Fetching songs...');
         const { data: songsData, error: songsError } = await supabase
           .from('LeSongs')
           .select('*')
@@ -27,16 +29,22 @@ export const useSongStore = createBaseStore<SongState>(
           .order('updated_at', { ascending: false });
           
         if (songsError) {
+          console.error('Error fetching songs:', songsError);
           throw songsError;
         }
+        
+        console.log('Songs data:', songsData);
         
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
           .select('song_id, device_id');
           
         if (votesError) {
+          console.error('Error fetching votes:', votesError);
           throw votesError;
         }
+        
+        console.log('Votes data:', votesData);
         
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
@@ -55,6 +63,7 @@ export const useSongStore = createBaseStore<SongState>(
           return songObj;
         });
         
+        console.log('Processed songs:', songs);
         set({ songs, isLoading: false });
       } catch (error) {
         console.error('Error fetching songs:', error);
@@ -64,14 +73,18 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     addSong: async (songData: SongFormData) => {
-      if (!get().checkIsAdmin()) {
+      const isAdmin = get().currentUser?.isAdmin;
+      
+      console.log('Current user:', get().currentUser);
+      console.log('Is admin?', isAdmin);
+      
+      if (!isAdmin) {
         toast.error('Only admins can add songs');
         return;
       }
       
       try {
         console.log('Adding song with data:', songData);
-        console.log('Is admin check passed:', get().checkIsAdmin());
         
         const { data, error } = await supabase
           .from('LeSongs')

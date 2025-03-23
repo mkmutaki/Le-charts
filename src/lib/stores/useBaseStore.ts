@@ -34,12 +34,15 @@ export const createBaseStore = <T extends BaseState>(
         isLoading: false,
         
         setCurrentUser: (user) => {
+          console.log("Setting current user:", user);
           set({ currentUser: user } as Partial<T>);
         },
         
         checkIsAdmin: () => {
           const { currentUser } = get();
-          return currentUser?.isAdmin || false;
+          const isAdmin = currentUser?.isAdmin || false;
+          console.log("Checking isAdmin:", isAdmin, "Current user:", currentUser);
+          return isAdmin;
         },
         
         ...config(set, get),
