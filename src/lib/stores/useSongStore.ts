@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
@@ -164,18 +163,6 @@ export const useSongStore = createBaseStore<SongState>(
       try {
         console.log('Attempting to delete song with ID:', songId);
         
-        // First, delete all votes associated with this song
-        const { error: votesDeleteError } = await supabase
-          .from('song_votes')
-          .delete()
-          .eq('song_id', parseInt(songId));
-          
-        if (votesDeleteError) {
-          console.error('Error deleting song votes:', votesDeleteError);
-          throw votesDeleteError;
-        }
-        
-        // Then delete the song itself
         const { error } = await supabase
           .from('LeSongs')
           .delete()
