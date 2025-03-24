@@ -6,7 +6,7 @@ import { User } from '../types';
 // Create dummy users for development
 export const dummyUser: User = {
   id: 'user-1',
-  isAdmin: false
+  isAdmin: true  // Set to true to match what's in the database
 };
 
 export const dummyAdmin: User = {

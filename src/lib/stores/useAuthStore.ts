@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '../types';
 import { createBaseStore, BaseState, dummyUser, dummyAdmin } from './useBaseStore';
+import { useSongStore } from './useSongStore';
 
 interface AuthState extends BaseState {
   checkAdminStatus: () => Promise<boolean>;
@@ -39,23 +40,28 @@ export const useAuthStore = createBaseStore<AuthState>(
 // For development testing: Function to toggle between admin and regular user
 export const toggleAdminMode = () => {
   const { currentUser, setCurrentUser } = useAuthStore.getState();
+  const songStore = useSongStore.getState();
   
   console.log("Toggle admin mode - Current user before toggle:", currentUser);
   
-  if (currentUser?.isAdmin) {
-    setCurrentUser(dummyUser);
-    console.log("Switched to regular user mode", dummyUser);
-    toast.info('Switched to regular user mode');
-  } else {
-    setCurrentUser(dummyAdmin);
-    console.log("Switched to admin mode", dummyAdmin);
-    toast.info('Switched to admin mode');
+  // Create the new user object based on current admin status
+  const newUser = currentUser?.isAdmin ? dummyUser : dummyAdmin;
+  
+  // Update both stores with the same user object
+  setCurrentUser(newUser);
+  if (songStore.setCurrentUser) {
+    songStore.setCurrentUser(newUser);
   }
+  
+  console.log(`Switched to ${newUser.isAdmin ? 'admin' : 'regular user'} mode`, newUser);
+  toast.info(`Switched to ${newUser.isAdmin ? 'admin' : 'regular user'} mode`);
   
   // Log the updated state to confirm
   setTimeout(() => {
     const { currentUser: updatedUser, checkIsAdmin } = useAuthStore.getState();
     const isAdminNow = checkIsAdmin();
+    const songStoreAdmin = useSongStore.getState().checkIsAdmin();
     console.log("User after toggle:", updatedUser, "Is admin now:", isAdminNow);
+    console.log("SongStore admin status:", songStoreAdmin);
   }, 100);
 };
