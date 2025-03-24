@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,21 +11,23 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
-  const { currentUser, checkIsAdmin, checkAdminStatus } = useAuthStore();
+  const { currentUser, checkIsAdmin } = useAuthStore();
   
   useEffect(() => {
-    // Check if user is already authenticated
+    // Only check if user is already authenticated once on initial load
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        // Also check admin status
-        await checkAdminStatus();
+      try {
+        const { data } = await supabase.auth.getSession();
+        // Don't call checkAdminStatus here - it's already handled by SupabaseListener
+        setIsCheckingAuth(false);
+      } catch (error) {
+        console.error("Error checking auth:", error);
+        setIsCheckingAuth(false);
       }
-      setIsCheckingAuth(false);
     };
     
     checkAuth();
-  }, [checkAdminStatus]);
+  }, []);
   
   // If still checking auth state, show loading
   if (isCheckingAuth) {
@@ -64,23 +65,15 @@ const Login = () => {
       });
       
       if (error) {
+        console.error("Login error:", error);
         toast.error(error.message);
         return;
       }
       
-      if (data.user) {
-        // Check admin status and redirect accordingly
-        const { data: isAdmin } = await supabase.rpc('is_admin', {
-          user_id: data.user.id
-        });
-        
-        if (isAdmin) {
-          navigate('/admin');
-        } else {
-          navigate('/');
-          toast.info('You are signed in, but do not have admin access');
-        }
-      }
+      // Don't call checkAdminStatus or anything else here - auth state change will be
+      // handled by the SupabaseListener which will redirect appropriately
+      
+      // We don't need to do anything else here - the auth state changes will redirect appropriately
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');

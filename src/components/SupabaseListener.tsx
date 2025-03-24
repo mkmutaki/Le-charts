@@ -5,7 +5,7 @@ import { useAuthStore, useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
-  const { setCurrentUser, currentUser, checkAdminStatus } = useAuthStore();
+  const { setCurrentUser, currentUser } = useAuthStore();
   const songStore = useSongStore();
 
   useEffect(() => {
@@ -55,9 +55,11 @@ export const SupabaseListener = () => {
       }
     );
 
-    // Check for existing session on mount
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // Check for existing session on mount - only once!
+    const checkInitialSession = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
         if (session) {
           const user = session.user;
           
@@ -67,7 +69,7 @@ export const SupabaseListener = () => {
           });
           
           if (error) {
-            console.error("Error checking admin status:", error);
+            console.error("Error checking admin status on initial load:", error);
           }
           
           const newUserState = {
@@ -75,18 +77,21 @@ export const SupabaseListener = () => {
             isAdmin: isAdmin || false
           };
           
-          console.log("Session found - Setting user with admin status:", isAdmin);
+          console.log("Initial session found - Setting user with admin status:", isAdmin);
           
           // Update the user in both stores
           setCurrentUser(newUserState);
           songStore.setCurrentUser(newUserState);
         } else {
-          console.log("No active session found");
+          console.log("No active session found on initial load");
         }
       } catch (error) {
-        console.error("Error in session check:", error);
+        console.error("Error in initial session check:", error);
       }
-    });
+    };
+
+    // Execute the initial session check
+    checkInitialSession();
 
     return () => {
       subscription.unsubscribe();

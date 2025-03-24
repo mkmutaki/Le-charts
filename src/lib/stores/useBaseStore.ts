@@ -45,7 +45,7 @@ export const createBaseStore = <T extends BaseState>(
             return false;
           }
           
-          const isAdmin = !!currentUser.isAdmin;
+          const isAdmin = Boolean(currentUser.isAdmin);
           console.log(`${name}: Checking isAdmin:`, isAdmin, "Current user:", currentUser);
           return isAdmin;
         },

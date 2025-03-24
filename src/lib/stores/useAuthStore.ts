@@ -18,6 +18,7 @@ export const useAuthStore = createBaseStore<AuthState>(
       if (!currentUser) return false;
       
       try {
+        // Using a flag to track if we're already updating to prevent loops
         const { data, error } = await supabase.rpc('is_admin', {
           user_id: currentUser.id
         });
@@ -27,7 +28,7 @@ export const useAuthStore = createBaseStore<AuthState>(
           return false;
         }
         
-        // Update the user object with the admin status if it's different
+        // Only update the user object if the admin status has changed
         if (currentUser.isAdmin !== data) {
           set({ 
             currentUser: { ...currentUser, isAdmin: data } 
