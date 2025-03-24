@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -10,12 +10,41 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
-  const { currentUser, checkIsAdmin } = useAuthStore();
+  const { currentUser, checkIsAdmin, checkAdminStatus } = useAuthStore();
+  
+  useEffect(() => {
+    // Check if user is already authenticated
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        // Also check admin status
+        await checkAdminStatus();
+      }
+      setIsCheckingAuth(false);
+    };
+    
+    checkAuth();
+  }, [checkAdminStatus]);
+  
+  // If still checking auth state, show loading
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
   
   // If user is already authenticated and is admin, redirect to admin page
   if (currentUser && checkIsAdmin()) {
     return <Navigate to="/admin" replace />;
+  }
+  
+  // If user is authenticated but not admin, redirect to home
+  if (currentUser && !checkIsAdmin()) {
+    return <Navigate to="/" replace />;
   }
   
   const handleLogin = async (e: React.FormEvent) => {
@@ -29,7 +58,7 @@ const Login = () => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -39,8 +68,19 @@ const Login = () => {
         return;
       }
       
-      toast.success('Logged in successfully');
-      navigate('/admin');
+      if (data.user) {
+        // Check admin status and redirect accordingly
+        const { data: isAdmin } = await supabase.rpc('is_admin', {
+          user_id: data.user.id
+        });
+        
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+          toast.info('You are signed in, but do not have admin access');
+        }
+      }
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');

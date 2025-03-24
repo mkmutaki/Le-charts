@@ -11,7 +11,7 @@ interface AuthState extends BaseState {
 
 export const useAuthStore = createBaseStore<AuthState>(
   (set, get) => ({
-    // New function to check admin status from the database
+    // Function to check admin status from the database
     checkAdminStatus: async () => {
       const { currentUser } = get();
       
@@ -27,6 +27,14 @@ export const useAuthStore = createBaseStore<AuthState>(
           return false;
         }
         
+        // Update the user object with the admin status if it's different
+        if (currentUser.isAdmin !== data) {
+          set({ 
+            currentUser: { ...currentUser, isAdmin: data } 
+          } as Partial<AuthState>);
+        }
+        
+        console.log('Admin status checked from database:', data);
         return data || false;
       } catch (error) {
         console.error('Error checking admin status:', error);
@@ -44,10 +52,19 @@ export const toggleAdminMode = () => {
   
   console.log("Toggle admin mode - Current user before toggle:", currentUser);
   
+  // If no user is logged in, use dummy users for development
+  if (!currentUser) {
+    const newUser = dummyUser;
+    setCurrentUser(newUser);
+    songStore.setCurrentUser(newUser);
+    toast.info(`Set to regular user mode`);
+    return;
+  }
+  
   // Toggle admin status based on current state
   const newUser: User = {
-    id: currentUser?.id || 'user-1',
-    isAdmin: !(currentUser?.isAdmin)
+    ...currentUser,
+    isAdmin: !currentUser.isAdmin
   };
   
   console.log("New user object created:", newUser);

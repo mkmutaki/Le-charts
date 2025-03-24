@@ -56,29 +56,33 @@ export const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Admin mode toggle (development only) */}
-            <button
-              onClick={toggleAdminMode}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                isAdmin 
-                  ? "bg-amber-100 text-amber-800" 
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              <Shield className="h-3.5 w-3.5" />
-              {isAdmin ? "Admin Mode" : "User Mode"}
-            </button>
+            {/* Show admin mode toggle only in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <button
+                onClick={toggleAdminMode}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                  isAdmin 
+                    ? "bg-amber-100 text-amber-800" 
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                <Shield className="h-3.5 w-3.5" />
+                {isAdmin ? "Admin Mode" : "User Mode"}
+              </button>
+            )}
             
-            {isAdmin ? (
+            {currentUser ? (
               <>
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-1.5 bg-muted/50 text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
-                >
-                  <Shield className="h-4 w-4" />
-                  <span>Admin</span>
-                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="flex items-center gap-1.5 bg-muted/50 text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Admin</span>
+                  </Link>
+                )}
                 
                 <button
                   onClick={handleLogout}
