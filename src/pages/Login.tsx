@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +34,7 @@ const Login = () => {
     try {
       setIsLoading(true);
       
+      console.log("Attempting to sign in with email and password");
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -44,7 +46,7 @@ const Login = () => {
         return;
       }
       
-      // Auth state change will handle the redirection
+      // Auth state change will handle the redirection and admin status check
       console.log("Login successful", data);
       
     } catch (error) {

@@ -9,7 +9,7 @@ import { useSongStore, useAuthStore, toggleAdminMode } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { currentUser } = useSongStore();
+  const { currentUser } = useAuthStore();
   const { checkIsAdmin } = useAuthStore();
   const navigate = useNavigate();
   const isAdmin = checkIsAdmin();
@@ -24,15 +24,24 @@ export const Navbar = () => {
   }, []);
   
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      toast.error('Error signing out');
-      return;
+    try {
+      console.log("Attempting to sign out");
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Error signing out:", error);
+        toast.error('Error signing out');
+        return;
+      }
+      
+      // The SupabaseListener will handle clearing the user state
+      console.log("Sign out successful");
+      toast.success('Signed out successfully');
+      navigate('/');
+    } catch (err) {
+      console.error("Exception during sign out:", err);
+      toast.error('An unexpected error occurred');
     }
-    
-    toast.success('Signed out successfully');
-    navigate('/');
   };
 
   return (
