@@ -6,7 +6,7 @@ import { User } from '../types';
 // Create dummy users for development
 export const dummyUser: User = {
   id: 'user-1',
-  isAdmin: true  // Set to true to match what's in the database
+  isAdmin: false  // Set to false for non-admin mode
 };
 
 export const dummyAdmin: User = {
@@ -34,19 +34,19 @@ export const createBaseStore = <T extends BaseState>(
         isLoading: false,
         
         setCurrentUser: (user) => {
-          console.log("Setting current user:", user);
+          console.log(`Setting current user in ${name}:`, user);
           set({ currentUser: user } as Partial<T>);
         },
         
         checkIsAdmin: () => {
           const { currentUser } = get();
           if (!currentUser) {
-            console.log("checkIsAdmin: No user found");
+            console.log(`${name}: checkIsAdmin: No user found`);
             return false;
           }
           
           const isAdmin = !!currentUser.isAdmin;
-          console.log("Checking isAdmin:", isAdmin, "Current user:", currentUser);
+          console.log(`${name}: Checking isAdmin:`, isAdmin, "Current user:", currentUser);
           return isAdmin;
         },
         

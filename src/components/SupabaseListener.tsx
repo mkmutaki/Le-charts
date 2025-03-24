@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthStore } from '@/lib/store';
-import { dummyUser, dummyAdmin } from '@/lib/stores/useBaseStore';
+import { useAuthStore, useSongStore } from '@/lib/store';
 
 export const SupabaseListener = () => {
   const { setCurrentUser, currentUser } = useAuthStore();
+  const songStore = useSongStore();
 
   useEffect(() => {
     // Set up auth state listener
@@ -23,20 +23,19 @@ export const SupabaseListener = () => {
               console.error("Error checking admin status:", error);
             }
             
-            // Update the user in the store
-            setCurrentUser({
+            const newUserState = {
               id: user.id,
               isAdmin: data || false
-            });
+            };
             
-            console.log("Auth state changed - User set:", {
-              id: user.id,
-              isAdmin: data || false
-            });
+            // Update the user in both stores
+            setCurrentUser(newUserState);
+            songStore.setCurrentUser(newUserState);
+            
+            console.log("Auth state changed - User set:", newUserState);
           } else {
-            // For development, we'll keep the dummy user instead of setting to null
-            // We don't need to set it here as it's already the default in the store
-            console.log("Auth state changed - No session, keeping dummy user for development");
+            // For development, we'll keep the current user instead of resetting
+            console.log("Auth state changed - No session, keeping current user for development");
           }
         } catch (error) {
           console.error("Error in auth state change handler:", error);
@@ -59,20 +58,19 @@ export const SupabaseListener = () => {
             console.error("Error checking admin status:", error);
           }
           
-          // Update the user in the store
-          setCurrentUser({
+          const newUserState = {
             id: user.id,
             isAdmin: data || false
-          });
+          };
           
-          console.log("Session found - User set:", {
-            id: user.id,
-            isAdmin: data || false
-          });
+          // Update the user in both stores
+          setCurrentUser(newUserState);
+          songStore.setCurrentUser(newUserState);
+          
+          console.log("Session found - User set:", newUserState);
         } else {
-          // Keep using the dummy user from the store for development
-          console.log("No session found, keeping dummy user from store for development");
-          // We don't need to explicitly set it here as it's already the default
+          // Keep the current user from the store for development
+          console.log("No session found, keeping current user from store for development");
         }
       } catch (error) {
         console.error("Error in session check:", error);
@@ -85,7 +83,7 @@ export const SupabaseListener = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser, currentUser]);
+  }, [setCurrentUser, currentUser, songStore]);
 
   return null;
 };

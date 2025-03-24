@@ -44,14 +44,17 @@ export const toggleAdminMode = () => {
   
   console.log("Toggle admin mode - Current user before toggle:", currentUser);
   
-  // Create the new user object based on current admin status
-  const newUser = currentUser?.isAdmin ? dummyUser : dummyAdmin;
+  // Toggle admin status based on current state
+  const newUser: User = {
+    id: currentUser?.id || 'user-1',
+    isAdmin: !(currentUser?.isAdmin)
+  };
+  
+  console.log("New user object created:", newUser);
   
   // Update both stores with the same user object
   setCurrentUser(newUser);
-  if (songStore.setCurrentUser) {
-    songStore.setCurrentUser(newUser);
-  }
+  songStore.setCurrentUser(newUser);
   
   console.log(`Switched to ${newUser.isAdmin ? 'admin' : 'regular user'} mode`, newUser);
   toast.info(`Switched to ${newUser.isAdmin ? 'admin' : 'regular user'} mode`);
