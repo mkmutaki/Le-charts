@@ -1,52 +1,64 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore, useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
-  const { setCurrentUser, currentUser } = useAuthStore();
+  const { setCurrentUser } = useAuthStore();
   const songStore = useSongStore();
+  const initialCheckDone = useRef(false);
 
   useEffect(() => {
+    console.log("Setting up SupabaseListener");
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state change event:", event);
         
+        if (event === 'SIGNED_OUT') {
+          // Clear the user on sign out
+          console.log("User signed out, clearing user state");
+          setCurrentUser(null);
+          songStore.setCurrentUser(null);
+          toast.info('Signed out');
+          return;
+        }
+        
+        if (!session) {
+          console.log("No session available in auth state change");
+          return;
+        }
+
         try {
-          if (session) {
-            const user = session.user;
-            
-            // Get admin status from the database
-            const { data: isAdmin, error } = await supabase.rpc('is_admin', {
-              user_id: user.id
-            });
-            
-            if (error) {
-              console.error("Error checking admin status:", error);
-              toast.error("Error checking permissions");
-            }
-            
-            const newUserState = {
-              id: user.id,
-              isAdmin: isAdmin || false
-            };
-            
-            console.log(`Auth state changed (${event}) - Setting user with admin status:`, isAdmin);
-            
-            // Update the user in both stores
-            setCurrentUser(newUserState);
-            songStore.setCurrentUser(newUserState);
-            
-            if (event === 'SIGNED_IN') {
-              toast.success('Signed in successfully');
-            }
-          } else if (event === 'SIGNED_OUT') {
-            // Clear the user on sign out
-            setCurrentUser(null);
-            songStore.setCurrentUser(null);
-            toast.info('Signed out');
+          const user = session.user;
+          console.log("User from session:", user.id);
+          
+          // Get admin status from the database - ONLY use RPC here
+          const { data: isAdmin, error } = await supabase.rpc('is_admin', {
+            user_id: user.id
+          });
+          
+          if (error) {
+            console.error("Error checking admin status:", error);
+            toast.error("Error checking permissions");
+            return;
+          }
+          
+          console.log(`Auth state changed (${event}) - Admin status from DB:`, isAdmin);
+          
+          const newUserState = {
+            id: user.id,
+            isAdmin: Boolean(isAdmin)
+          };
+          
+          // Update the user in both stores
+          setCurrentUser(newUserState);
+          songStore.setCurrentUser(newUserState);
+          
+          if (event === 'SIGNED_IN') {
+            toast.success('Signed in successfully');
           }
         } catch (error) {
           console.error("Error in auth state change handler:", error);
@@ -55,36 +67,48 @@ export const SupabaseListener = () => {
       }
     );
 
-    // Check for existing session on mount - only once!
+    // Check for existing session on mount - only if not already checked
     const checkInitialSession = async () => {
+      if (initialCheckDone.current) {
+        console.log("Initial session already checked, skipping");
+        return;
+      }
+      
       try {
+        initialCheckDone.current = true;
+        console.log("Checking for initial session");
+        
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session) {
-          const user = session.user;
-          
-          // Get admin status from the database
-          const { data: isAdmin, error } = await supabase.rpc('is_admin', {
-            user_id: user.id
-          });
-          
-          if (error) {
-            console.error("Error checking admin status on initial load:", error);
-          }
-          
-          const newUserState = {
-            id: user.id,
-            isAdmin: isAdmin || false
-          };
-          
-          console.log("Initial session found - Setting user with admin status:", isAdmin);
-          
-          // Update the user in both stores
-          setCurrentUser(newUserState);
-          songStore.setCurrentUser(newUserState);
-        } else {
+        if (!session) {
           console.log("No active session found on initial load");
+          return;
         }
+        
+        const user = session.user;
+        console.log("Initial session found for user:", user.id);
+        
+        // Get admin status from the database using RPC only
+        const { data: isAdmin, error } = await supabase.rpc('is_admin', {
+          user_id: user.id
+        });
+        
+        if (error) {
+          console.error("Error checking admin status on initial load:", error);
+          return;
+        }
+        
+        console.log("Initial admin status from DB:", isAdmin);
+        
+        const newUserState = {
+          id: user.id,
+          isAdmin: Boolean(isAdmin)
+        };
+        
+        // Update the user in both stores
+        setCurrentUser(newUserState);
+        songStore.setCurrentUser(newUserState);
+        
       } catch (error) {
         console.error("Error in initial session check:", error);
       }
@@ -94,6 +118,7 @@ export const SupabaseListener = () => {
     checkInitialSession();
 
     return () => {
+      console.log("Cleaning up SupabaseListener");
       subscription.unsubscribe();
     };
   }, [setCurrentUser, songStore]);

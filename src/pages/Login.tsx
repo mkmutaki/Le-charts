@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,34 +9,8 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
   const { currentUser, checkIsAdmin } = useAuthStore();
-  
-  useEffect(() => {
-    // Only check if user is already authenticated once on initial load
-    const checkAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        // Don't call checkAdminStatus here - it's already handled by SupabaseListener
-        setIsCheckingAuth(false);
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        setIsCheckingAuth(false);
-      }
-    };
-    
-    checkAuth();
-  }, []);
-  
-  // If still checking auth state, show loading
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
   
   // If user is already authenticated and is admin, redirect to admin page
   if (currentUser && checkIsAdmin()) {
@@ -70,10 +44,9 @@ const Login = () => {
         return;
       }
       
-      // Don't call checkAdminStatus or anything else here - auth state change will be
-      // handled by the SupabaseListener which will redirect appropriately
+      // Auth state change will handle the redirection
+      console.log("Login successful", data);
       
-      // We don't need to do anything else here - the auth state changes will redirect appropriately
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');

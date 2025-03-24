@@ -18,6 +18,8 @@ export const useAuthStore = createBaseStore<AuthState>(
       if (!currentUser) return false;
       
       try {
+        console.log("Checking admin status for user:", currentUser.id);
+        
         // Using a flag to track if we're already updating to prevent loops
         const { data, error } = await supabase.rpc('is_admin', {
           user_id: currentUser.id
@@ -28,15 +30,19 @@ export const useAuthStore = createBaseStore<AuthState>(
           return false;
         }
         
+        const isAdmin = Boolean(data);
+        
         // Only update the user object if the admin status has changed
-        if (currentUser.isAdmin !== data) {
+        if (currentUser.isAdmin !== isAdmin) {
+          console.log("Admin status changed, updating user", isAdmin);
           set({ 
-            currentUser: { ...currentUser, isAdmin: data } 
+            currentUser: { ...currentUser, isAdmin } 
           } as Partial<AuthState>);
+        } else {
+          console.log("Admin status unchanged:", isAdmin);
         }
         
-        console.log('Admin status checked from database:', data);
-        return data || false;
+        return isAdmin;
       } catch (error) {
         console.error('Error checking admin status:', error);
         return false;
@@ -68,21 +74,9 @@ export const toggleAdminMode = () => {
     isAdmin: !currentUser.isAdmin
   };
   
-  console.log("New user object created:", newUser);
-  
   // Update both stores with the same user object
   setCurrentUser(newUser);
   songStore.setCurrentUser(newUser);
   
-  console.log(`Switched to ${newUser.isAdmin ? 'admin' : 'regular user'} mode`, newUser);
   toast.info(`Switched to ${newUser.isAdmin ? 'admin' : 'regular user'} mode`);
-  
-  // Log the updated state to confirm
-  setTimeout(() => {
-    const { currentUser: updatedUser, checkIsAdmin } = useAuthStore.getState();
-    const isAdminNow = checkIsAdmin();
-    const songStoreAdmin = useSongStore.getState().checkIsAdmin();
-    console.log("User after toggle:", updatedUser, "Is admin now:", isAdminNow);
-    console.log("SongStore admin status:", songStoreAdmin);
-  }, 100);
 };
