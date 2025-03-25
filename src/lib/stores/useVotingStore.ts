@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
 import { v4 as uuidv4 } from 'uuid';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
 interface VotingState extends BaseState {
   upvoteSong: (songId: string) => Promise<void>;
@@ -11,26 +12,46 @@ interface VotingState extends BaseState {
   removeVoteForSong: (songId: string) => Promise<void>;
 }
 
+// Initialize fingerprint instance
+const fpPromise = FingerprintJS.load();
+
 // Function to get or create a device ID
-const getDeviceId = (): string => {
-  // Check if a device ID already exists in localStorage
-  let deviceId = localStorage.getItem('device_id');
-  
-  // If not, create a new UUID and store it
-  if (!deviceId) {
-    deviceId = uuidv4();
-    localStorage.setItem('device_id', deviceId);
+const getDeviceId = async (): Promise<string> => {
+  try {
+    // First try to get the stored device ID
+    let deviceId = localStorage.getItem('device_id');
+    
+    // If no device ID exists, generate one using fingerprinting
+    if (!deviceId) {
+      // Get fingerprint components
+      const fp = await fpPromise;
+      const result = await fp.get();
+      
+      // Use the visitor ID as the fingerprint
+      deviceId = result.visitorId;
+      
+      // Store it for future use (will be cleared in incognito when session ends,
+      // but the fingerprint will regenerate the same ID on return visits)
+      localStorage.setItem('device_id', deviceId);
+      console.log('Generated new fingerprint ID:', deviceId);
+    }
+    
+    return deviceId;
+  } catch (error) {
+    console.error('Error generating fingerprint:', error);
+    // Fallback to UUID if fingerprinting fails
+    const fallbackId = uuidv4();
+    localStorage.setItem('device_id', fallbackId);
+    return fallbackId;
   }
-  
-  return deviceId;
 };
 
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
     getUserVotedSong: async () => {
       try {
-        // Get device ID
-        const deviceId = getDeviceId();
+        // Get device ID using fingerprinting
+        const deviceId = await getDeviceId();
         
         if (!deviceId) {
           console.error('Could not determine device ID');
@@ -62,8 +83,8 @@ export const useVotingStore = createBaseStore<VotingState>(
       try {
         console.log('Upvoting song:', songId);
         
-        // Get device ID
-        const deviceId = getDeviceId();
+        // Get device ID using fingerprinting
+        const deviceId = await getDeviceId();
         
         if (!deviceId) {
           toast.error('Could not identify your device. Voting not possible.');
