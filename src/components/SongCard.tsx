@@ -32,7 +32,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     }
   };
   
-  // Update when song changes or user changes
+  // Update when song changes or when component mounts
   useEffect(() => {
     setVoteCount(song.votes);
     checkUserVotes();

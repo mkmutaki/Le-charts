@@ -12,28 +12,68 @@ interface VotingState extends BaseState {
   removeVoteForSong: (songId: string) => Promise<void>;
 }
 
-// Initialize fingerprint instance
-const fpPromise = FingerprintJS.load();
+// Create a stable fingerprint promise that can be reused
+const fpPromise = FingerprintJS.load({
+  monitoring: false, // Disable monitoring for privacy
+});
 
-// Function to get or create a device ID
+// Cache for the fingerprint value
+let cachedFingerprint: string | null = null;
+
+// Enhanced fingerprinting with more consistent results across sessions
 const getDeviceId = async (): Promise<string> => {
   try {
-    // First try to get the stored device ID
-    let deviceId = localStorage.getItem('device_id');
+    // If we already have a cached fingerprint, return it
+    if (cachedFingerprint) {
+      console.log('Using cached fingerprint:', cachedFingerprint);
+      return cachedFingerprint;
+    }
     
-    // If no device ID exists, generate one using fingerprinting
-    if (!deviceId) {
-      // Get fingerprint components
-      const fp = await fpPromise;
-      const result = await fp.get();
-      
-      // Use the visitor ID as the fingerprint
-      deviceId = result.visitorId;
-      
-      // Store it for future use (will be cleared in incognito when session ends,
-      // but the fingerprint will regenerate the same ID on return visits)
+    // Try to get from sessionStorage first (more persistent in some incognito modes)
+    const sessionFingerprint = sessionStorage.getItem('device_fingerprint');
+    if (sessionFingerprint) {
+      console.log('Using sessionStorage fingerprint:', sessionFingerprint);
+      cachedFingerprint = sessionFingerprint;
+      return sessionFingerprint;
+    }
+    
+    // Try localStorage as backup
+    const localFingerprint = localStorage.getItem('device_id');
+    if (localFingerprint) {
+      console.log('Using localStorage fingerprint:', localFingerprint);
+      // Also store in sessionStorage for redundancy
+      try {
+        sessionStorage.setItem('device_fingerprint', localFingerprint);
+      } catch (e) {
+        console.error('Failed to store in sessionStorage:', e);
+      }
+      cachedFingerprint = localFingerprint;
+      return localFingerprint;
+    }
+    
+    console.log('Generating new fingerprint...');
+    
+    // Get fingerprint components with enhanced stability options
+    const fp = await fpPromise;
+    const result = await fp.get({
+      extendedResult: true // Get more data for better fingerprinting
+    });
+    
+    // Use a combination of components for better stability
+    // Take the visitorId as the base
+    let deviceId = result.visitorId;
+    
+    console.log('Generated new fingerprint:', deviceId);
+    
+    // Store the fingerprint in multiple places for redundancy
+    try {
       localStorage.setItem('device_id', deviceId);
-      console.log('Generated new fingerprint ID:', deviceId);
+      sessionStorage.setItem('device_fingerprint', deviceId);
+      
+      // Cache for this session
+      cachedFingerprint = deviceId;
+    } catch (e) {
+      console.error('Failed to store fingerprint:', e);
     }
     
     return deviceId;
@@ -41,7 +81,12 @@ const getDeviceId = async (): Promise<string> => {
     console.error('Error generating fingerprint:', error);
     // Fallback to UUID if fingerprinting fails
     const fallbackId = uuidv4();
-    localStorage.setItem('device_id', fallbackId);
+    try {
+      localStorage.setItem('device_id', fallbackId);
+      sessionStorage.setItem('device_fingerprint', fallbackId);
+    } catch (e) {
+      console.error('Failed to store fallback ID:', e);
+    }
     return fallbackId;
   }
 };
@@ -50,7 +95,7 @@ export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
     getUserVotedSong: async () => {
       try {
-        // Get device ID using fingerprinting
+        // Get device ID using enhanced fingerprinting
         const deviceId = await getDeviceId();
         
         if (!deviceId) {
@@ -83,7 +128,7 @@ export const useVotingStore = createBaseStore<VotingState>(
       try {
         console.log('Upvoting song:', songId);
         
-        // Get device ID using fingerprinting
+        // Get device ID using enhanced fingerprinting
         const deviceId = await getDeviceId();
         
         if (!deviceId) {
