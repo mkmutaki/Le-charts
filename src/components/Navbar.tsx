@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Music, Shield, LogIn, LogOut } from 'lucide-react';
@@ -8,35 +9,19 @@ import { useAuthStore } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { currentUser, checkAdminStatus } = useAuthStore();
+  const { currentUser, checkIsAdmin } = useAuthStore();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // Initialize with value from currentUser
+  // Get the admin status when component mounts or currentUser changes
   useEffect(() => {
-    setIsAdmin(currentUser?.isAdmin || false);
-  }, [currentUser]);
-  
-  // Set up an effect to periodically check admin status when user is logged in
-  useEffect(() => {
-    if (!currentUser) {
-      setIsAdmin(false);
-      return;
-    }
-    
-    // Check admin status immediately upon login
     const checkAdmin = async () => {
-      const adminStatus = await checkAdminStatus();
+      const adminStatus = await checkIsAdmin();
       setIsAdmin(adminStatus);
     };
     
     checkAdmin();
-    
-    // Then set up periodic checks (every 30 seconds)
-    const interval = setInterval(checkAdmin, 30000);
-    
-    return () => clearInterval(interval);
-  }, [currentUser, checkAdminStatus]);
+  }, [currentUser, checkIsAdmin]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,6 +47,7 @@ export const Navbar = () => {
       console.log("Sign out API call successful, auth state change should follow");
       
       // The SupabaseListener will handle clearing the user state
+      toast.success('Signed out successfully');
       navigate('/');
     } catch (err) {
       console.error("Exception during sign out:", err);
