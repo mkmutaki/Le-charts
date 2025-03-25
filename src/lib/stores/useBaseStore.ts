@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '../types';
@@ -8,7 +7,7 @@ export interface BaseState {
   currentUser: User | null;
   isLoading: boolean;
   setCurrentUser: (user: User | null) => void;
-  checkIsAdmin: () => boolean;
+  checkIsAdmin: () => Promise<boolean>;
 }
 
 // Create a base store that can be used by other stores
@@ -34,13 +33,18 @@ export const createBaseStore = <T extends BaseState>(
           set({ currentUser: user } as Partial<T>);
         },
         
-        checkIsAdmin: () => {
+        checkIsAdmin: async () => {
           const { currentUser } = get();
           if (!currentUser) {
             return false;
           }
           
-          // Simply return the isAdmin property without any API calls
+          // For stores other than auth-store, try to use their checkAdminStatus if available
+          if (name !== 'auth-store' && 'checkAdminStatus' in get()) {
+            return (get() as any).checkAdminStatus();
+          }
+          
+          // Otherwise just return the current isAdmin state
           return Boolean(currentUser.isAdmin);
         },
         
