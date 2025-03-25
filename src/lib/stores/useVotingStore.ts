@@ -222,11 +222,11 @@ export const useVotingStore = createBaseStore<VotingState>(
             
         if (error) throw error;
         
-        // Update the vote count in the LeSongs table
+        // Update the vote count in the LeSongs table manually since we removed the trigger
         const { error: updateError } = await supabase
           .from('LeSongs')
           .update({ 
-            votes: supabase.rpc('increment', { x: 1 }), 
+            votes: supabase.rpc('increment', { x: 0 }).select('*').single().then(res => res.data + 1), 
             updated_at: new Date().toISOString() 
           })
           .eq('id', parseInt(songId));

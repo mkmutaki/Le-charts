@@ -21,3 +21,4 @@ IMMUTABLE STRICT
 AS $$
   SELECT $1 + 1;
 $$;
+
