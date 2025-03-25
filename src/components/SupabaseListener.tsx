@@ -35,10 +35,16 @@ export const SupabaseListener = () => {
           const user = session.user;
           console.log("User from session:", user.id);
           
+          // DEBUGGING: Log the user ID being used for the is_admin check
+          console.log("Checking admin status for user ID:", user.id);
+          
           // Get admin status from the database - ONLY use RPC here
           const { data: isAdmin, error } = await supabase.rpc('is_admin', {
             user_id: user.id
           });
+          
+          // DEBUGGING: Log the raw response from the is_admin RPC call
+          console.log("Raw is_admin RPC response:", { data: isAdmin, error });
           
           if (error) {
             console.error("Error checking admin status:", error);
@@ -52,6 +58,9 @@ export const SupabaseListener = () => {
             id: user.id,
             isAdmin: Boolean(isAdmin)
           };
+          
+          // DEBUGGING: Log the new user state before updating
+          console.log("Setting new user state:", newUserState);
           
           // Update the user in both stores
           setCurrentUser(newUserState);
@@ -88,10 +97,16 @@ export const SupabaseListener = () => {
         const user = session.user;
         console.log("Initial session found for user:", user.id);
         
+        // DEBUGGING: Log the user ID for initial admin check
+        console.log("Initial check - Admin status check for user ID:", user.id);
+        
         // Get admin status from the database using RPC only
         const { data: isAdmin, error } = await supabase.rpc('is_admin', {
           user_id: user.id
         });
+        
+        // DEBUGGING: Log the raw response from the is_admin RPC call
+        console.log("Initial check - Raw is_admin RPC response:", { data: isAdmin, error });
         
         if (error) {
           console.error("Error checking admin status on initial load:", error);
@@ -104,6 +119,9 @@ export const SupabaseListener = () => {
           id: user.id,
           isAdmin: Boolean(isAdmin)
         };
+        
+        // DEBUGGING: Log the new user state before updating
+        console.log("Initial check - Setting new user state:", newUserState);
         
         // Update the user in both stores
         setCurrentUser(newUserState);

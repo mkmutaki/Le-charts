@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,12 +12,10 @@ const Login = () => {
   const navigate = useNavigate();
   const { currentUser, checkIsAdmin } = useAuthStore();
   
-  // If user is already authenticated and is admin, redirect to admin page
   if (currentUser && checkIsAdmin()) {
     return <Navigate to="/admin" replace />;
   }
   
-  // If user is authenticated but not admin, redirect to home
   if (currentUser && !checkIsAdmin()) {
     return <Navigate to="/" replace />;
   }
@@ -46,8 +43,20 @@ const Login = () => {
         return;
       }
       
-      // Auth state change will handle the redirection and admin status check
-      console.log("Login successful", data);
+      console.log("Login successful, response data:", data);
+      console.log("User ID from login:", data.user?.id);
+      
+      const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+        user_id: data.user?.id
+      });
+      
+      console.log("Manual admin check after login:", { 
+        isAdmin,
+        error: adminError,
+        userId: data.user?.id
+      });
+      
+      console.log("Login successful, waiting for auth state change to process admin status");
       
     } catch (error) {
       console.error('Login error:', error);

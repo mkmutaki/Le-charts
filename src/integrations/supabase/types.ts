@@ -85,7 +85,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          is_admin?: boolean
+          is_admin: boolean
           user_id: string
         }
         Update: {

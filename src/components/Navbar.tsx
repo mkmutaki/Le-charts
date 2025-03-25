@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Music, Shield, LogIn, LogOut } from 'lucide-react';
@@ -33,8 +32,10 @@ export const Navbar = () => {
         return;
       }
       
+      // DEBUGGING: Add explicit log for signout action
+      console.log("Sign out API call successful, auth state change should follow");
+      
       // The SupabaseListener will handle clearing the user state
-      console.log("Sign out successful");
       toast.success('Signed out successfully');
       navigate('/');
     } catch (err) {
