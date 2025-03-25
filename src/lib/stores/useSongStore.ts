@@ -36,7 +36,8 @@ export const useSongStore = createBaseStore<SongState>(
         console.log('Songs data:', songsData);
         
         // Important: Always fetch votes data separately
-        // and don't depend on currentUser state
+        // This is now allowed for anonymous users thanks to the new RLS policy
+        console.log('Fetching votes data...');
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
           .select('song_id, device_id');
@@ -68,7 +69,7 @@ export const useSongStore = createBaseStore<SongState>(
           return songObj;
         });
         
-        console.log('Processed songs:', songs);
+        console.log('Processed songs with votes:', songs);
         set({ songs, isLoading: false });
       } catch (error) {
         console.error('Error fetching songs:', error);

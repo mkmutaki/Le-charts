@@ -35,16 +35,10 @@ export const SupabaseListener = () => {
           const user = session.user;
           console.log("User from session:", user.id);
           
-          // DEBUGGING: Log the user ID being used for the is_admin check
-          console.log("Checking admin status for user ID:", user.id);
-          
           // Get admin status from the database with updated parameter name
           const { data: isAdmin, error } = await supabase.rpc('is_admin', {
             id: user.id
           });
-          
-          // DEBUGGING: Log the raw response from the is_admin RPC call
-          console.log("Raw is_admin RPC response:", { data: isAdmin, error });
           
           if (error) {
             console.error("Error checking admin status:", error);
@@ -59,16 +53,13 @@ export const SupabaseListener = () => {
             isAdmin: Boolean(isAdmin)
           };
           
-          // DEBUGGING: Log the new user state before updating
-          console.log("Setting new user state:", newUserState);
-          
           // Update the user in both stores
           setCurrentUser(newUserState);
           setSongStoreUser(newUserState);
           
-          // Fetch songs data regardless of admin status
-          // Important: Place this after setting user state but before any 
-          // conditional logic that might skip execution
+          // Fetch songs data after user state is updated
+          // Important: This must come after setting user state to ensure
+          // correct authorization context for data fetching
           console.log("Refreshing songs data after auth state change");
           await fetchSongs();
           
@@ -97,25 +88,23 @@ export const SupabaseListener = () => {
         
         if (!session) {
           console.log("No active session found on initial load");
+          // Even if no session, we still need to fetch songs for anonymous users
+          await fetchSongs();
           return;
         }
         
         const user = session.user;
         console.log("Initial session found for user:", user.id);
         
-        // DEBUGGING: Log the user ID for initial admin check
-        console.log("Initial check - Admin status check for user ID:", user.id);
-        
         // Get admin status from the database using the updated parameter name
         const { data: isAdmin, error } = await supabase.rpc('is_admin', {
           id: user.id
         });
         
-        // DEBUGGING: Log the raw response from the is_admin RPC call
-        console.log("Initial check - Raw is_admin RPC response:", { data: isAdmin, error });
-        
         if (error) {
           console.error("Error checking admin status on initial load:", error);
+          // Even if there's an error, still fetch songs
+          await fetchSongs();
           return;
         }
         
@@ -126,20 +115,18 @@ export const SupabaseListener = () => {
           isAdmin: Boolean(isAdmin)
         };
         
-        // DEBUGGING: Log the new user state before updating
-        console.log("Initial check - Setting new user state:", newUserState);
-        
         // Update the user in both stores
         setCurrentUser(newUserState);
         setSongStoreUser(newUserState);
         
-        // Fetch songs data regardless of admin status
-        // Important: Place this after setting user state
+        // Fetch songs data after user state is updated
         console.log("Refreshing songs data after initial session check");
         await fetchSongs();
         
       } catch (error) {
         console.error("Error in initial session check:", error);
+        // Even if there's an error, still fetch songs for anonymous users
+        await fetchSongs();
       }
     };
 
