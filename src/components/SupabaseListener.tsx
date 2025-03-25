@@ -66,11 +66,11 @@ export const SupabaseListener = () => {
           setCurrentUser(newUserState);
           setSongStoreUser(newUserState);
           
-          // Refresh songs data after authentication change
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            console.log("Refreshing songs data after auth state change");
-            await fetchSongs();
-          }
+          // Fetch songs data regardless of admin status
+          // Important: Place this after setting user state but before any 
+          // conditional logic that might skip execution
+          console.log("Refreshing songs data after auth state change");
+          await fetchSongs();
           
           if (event === 'SIGNED_IN') {
             toast.success('Signed in successfully');
@@ -133,11 +133,10 @@ export const SupabaseListener = () => {
         setCurrentUser(newUserState);
         setSongStoreUser(newUserState);
         
-        // Refresh songs data after initial session check if user is authenticated
-        if (session) {
-          console.log("Refreshing songs data after initial session check");
-          await fetchSongs();
-        }
+        // Fetch songs data regardless of admin status
+        // Important: Place this after setting user state
+        console.log("Refreshing songs data after initial session check");
+        await fetchSongs();
         
       } catch (error) {
         console.error("Error in initial session check:", error);

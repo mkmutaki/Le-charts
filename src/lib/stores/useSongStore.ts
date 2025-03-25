@@ -35,6 +35,8 @@ export const useSongStore = createBaseStore<SongState>(
         
         console.log('Songs data:', songsData);
         
+        // Important: Always fetch votes data separately
+        // and don't depend on currentUser state
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
           .select('song_id, device_id');
@@ -54,10 +56,13 @@ export const useSongStore = createBaseStore<SongState>(
                 .map(vote => vote.device_id)
             : [];
           
+          // Use actual votes count from the votes data
           const actualVotes = votesData
             ? votesData.filter(vote => vote.song_id === song.id).length
             : 0;
           
+          // If votes in DB and actual votes differ, use the actual votes
+          // This ensures consistency even if the votes in the DB are out of sync
           songObj.votes = actualVotes;
           
           return songObj;
