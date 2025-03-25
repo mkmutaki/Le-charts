@@ -38,9 +38,9 @@ export const SupabaseListener = () => {
           // DEBUGGING: Log the user ID being used for the is_admin check
           console.log("Checking admin status for user ID:", user.id);
           
-          // Get admin status from the database - Cast user ID to the correct type
+          // Get admin status from the database with updated parameter name
           const { data: isAdmin, error } = await supabase.rpc('is_admin', {
-            user_id: user.id
+            id: user.id
           });
           
           // DEBUGGING: Log the raw response from the is_admin RPC call
@@ -100,9 +100,9 @@ export const SupabaseListener = () => {
         // DEBUGGING: Log the user ID for initial admin check
         console.log("Initial check - Admin status check for user ID:", user.id);
         
-        // Get admin status from the database using the correct user id format
+        // Get admin status from the database using the updated parameter name
         const { data: isAdmin, error } = await supabase.rpc('is_admin', {
-          user_id: user.id
+          id: user.id
         });
         
         // DEBUGGING: Log the raw response from the is_admin RPC call

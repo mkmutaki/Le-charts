@@ -56,7 +56,7 @@ const Login = () => {
       
       // Directly check admin status after login to verify
       const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-        user_id: data.user.id
+        id: data.user.id
       });
       
       console.log("Manual admin check after login:", { 

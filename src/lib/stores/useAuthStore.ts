@@ -21,11 +21,11 @@ export const useAuthStore = createBaseStore<AuthState>(
         console.log("Checking admin status for user:", currentUser.id);
         
         // DEBUGGING: Log the user ID being sent to the RPC
-        console.log("RPC is_admin being called with user_id:", currentUser.id);
+        console.log("RPC is_admin being called with id:", currentUser.id);
         
         // Using a flag to track if we're already updating to prevent loops
         const { data, error } = await supabase.rpc('is_admin', {
-          user_id: currentUser.id
+          id: currentUser.id
         });
           
         // DEBUGGING: Log the raw response from the RPC
