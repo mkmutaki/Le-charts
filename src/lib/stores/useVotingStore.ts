@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -149,15 +148,13 @@ export const useVotingStore = createBaseStore<VotingState>(
         // Get user's IP address
         const ipAddress = await getUserIpAddress();
         
-        // Count how many votes this IP has used
-        const { data, error, count } = await supabase
-          .from('song_votes')
-          .select('id', { count: 'exact' })
-          .eq('ip_address', ipAddress);
+        // Use the new RPC function to get vote count
+        const { data, error } = await supabase
+          .rpc('get_ip_vote_count', { ip_addr: ipAddress });
           
         if (error) throw error;
         
-        return count || 0;
+        return data || 0;
       } catch (error) {
         console.error('Error getting user vote count:', error);
         return 0;
@@ -179,33 +176,27 @@ export const useVotingStore = createBaseStore<VotingState>(
         // Get user's IP address
         const ipAddress = await getUserIpAddress();
         
-        // Check if user already voted for THIS song (using device ID and IP)
-        const { data: existingVote, error: checkExistingError } = await supabase
-          .from('song_votes')
-          .select('id')
-          .eq('device_id', deviceId)
-          .eq('ip_address', ipAddress)
-          .eq('song_id', parseInt(songId))
-          .maybeSingle();
+        // Check if user already voted for THIS song using the new RPC function
+        const { data: hasVoted, error: checkVoteError } = await supabase
+          .rpc('has_voted_for_song', { 
+            device_id_param: deviceId,
+            song_id_param: parseInt(songId),
+            ip_param: ipAddress
+          });
           
-        if (checkExistingError) throw checkExistingError;
+        if (checkVoteError) throw checkVoteError;
         
         // If already voted for this song, show message and return
-        if (existingVote) {
+        if (hasVoted) {
           toast.info('You already liked this song');
           return;
         }
         
         // Check how many total votes this IP address has
-        const { count, error: countError } = await supabase
-          .from('song_votes')
-          .select('id', { count: 'exact' })
-          .eq('ip_address', ipAddress);
-          
-        if (countError) throw countError;
+        const voteCount = await get().getUserVoteCount();
         
         // Limit to 3 votes per IP address
-        if (count !== null && count >= 3) {
+        if (voteCount >= 3) {
           toast.info('You can only vote for three songs in total');
           return;
         }
@@ -220,7 +211,14 @@ export const useVotingStore = createBaseStore<VotingState>(
             voted_at: new Date().toISOString()
           });
             
-        if (error) throw error;
+        if (error) {
+          // If the error is due to unique constraint, handle it gracefully
+          if (error.code === '23505') { // Unique violation code
+            toast.info('You already liked this song');
+            return;
+          }
+          throw error;
+        }
         
         // Update the vote count in the LeSongs table manually since we removed the trigger
         // First get the current vote count
