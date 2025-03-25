@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
   const { setCurrentUser } = useAuthStore();
-  const songStore = useSongStore();
+  const { setCurrentUser: setSongStoreUser, fetchSongs } = useSongStore();
   const initialCheckDone = useRef(false);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export const SupabaseListener = () => {
           // Clear the user on sign out
           console.log("User signed out, clearing user state");
           setCurrentUser(null);
-          songStore.setCurrentUser(null);
+          setSongStoreUser(null);
           toast.info('Signed out');
           return;
         }
@@ -64,7 +64,13 @@ export const SupabaseListener = () => {
           
           // Update the user in both stores
           setCurrentUser(newUserState);
-          songStore.setCurrentUser(newUserState);
+          setSongStoreUser(newUserState);
+          
+          // Refresh songs data after authentication change
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            console.log("Refreshing songs data after auth state change");
+            await fetchSongs();
+          }
           
           if (event === 'SIGNED_IN') {
             toast.success('Signed in successfully');
@@ -125,7 +131,13 @@ export const SupabaseListener = () => {
         
         // Update the user in both stores
         setCurrentUser(newUserState);
-        songStore.setCurrentUser(newUserState);
+        setSongStoreUser(newUserState);
+        
+        // Refresh songs data after initial session check if user is authenticated
+        if (session) {
+          console.log("Refreshing songs data after initial session check");
+          await fetchSongs();
+        }
         
       } catch (error) {
         console.error("Error in initial session check:", error);
@@ -139,7 +151,7 @@ export const SupabaseListener = () => {
       console.log("Cleaning up SupabaseListener");
       subscription.unsubscribe();
     };
-  }, [setCurrentUser, songStore]);
+  }, [setCurrentUser, setSongStoreUser, fetchSongs]);
 
   return null;
 };
