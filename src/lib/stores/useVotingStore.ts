@@ -1,84 +1,166 @@
 
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
-import {
-  getUserVotedSong,
-  getUserVoteCount,
-  upvoteSong as upvoteSongService,
-  removeVoteForSong as removeVoteService,
-  resetVotes as resetVotesService
-} from '@/lib/services/votingService';
+import { v4 as uuidv4 } from 'uuid';
 
 interface VotingState extends BaseState {
   upvoteSong: (songId: string) => Promise<void>;
   getUserVotedSong: () => Promise<string | null>;
   resetVotes: () => Promise<void>;
   removeVoteForSong: (songId: string) => Promise<void>;
-  getUserVoteCount: () => Promise<number>;
 }
+
+// Function to get or create a device ID
+const getDeviceId = (): string => {
+  // Check if a device ID already exists in localStorage
+  let deviceId = localStorage.getItem('device_id');
+  
+  // If not, create a new UUID and store it
+  if (!deviceId) {
+    deviceId = uuidv4();
+    localStorage.setItem('device_id', deviceId);
+  }
+  
+  return deviceId;
+};
 
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
     getUserVotedSong: async () => {
       try {
-        return await getUserVotedSong();
-      } catch (error) {
-        console.error('Error in getUserVotedSong:', error);
+        // Get device ID
+        const deviceId = getDeviceId();
+        
+        if (!deviceId) {
+          console.error('Could not determine device ID');
+          return null;
+        }
+        
+        // Check if user has already voted for a song
+        const { data, error } = await supabase
+          .from('song_votes')
+          .select('song_id')
+          .eq('device_id', deviceId)
+          .maybeSingle();
+          
+        if (error) throw error;
+        
+        // If user has voted for a song, return its ID
+        if (data) {
+          return data.song_id.toString();
+        }
+        
         return null;
-      }
-    },
-    
-    getUserVoteCount: async () => {
-      try {
-        return await getUserVoteCount();
       } catch (error) {
-        console.error('Error in getUserVoteCount:', error);
-        return 0;
+        console.error('Error getting user voted song:', error);
+        return null;
       }
     },
     
     upvoteSong: async (songId: string) => {
       try {
-        await upvoteSongService(songId);
+        console.log('Upvoting song:', songId);
+        
+        // Get device ID
+        const deviceId = getDeviceId();
+        
+        if (!deviceId) {
+          toast.error('Could not identify your device. Voting not possible.');
+          return;
+        }
+        
+        // Check if user already voted for ANY song
+        const { data: existingVotes, error: checkError } = await supabase
+          .from('song_votes')
+          .select('song_id')
+          .eq('device_id', deviceId);
+          
+        if (checkError) throw checkError;
+        
+        // User already voted for a song - votes are immutable
+        if (existingVotes && existingVotes.length > 0) {
+          const currentVotedSongId = existingVotes[0].song_id.toString();
+          if (currentVotedSongId === songId) {
+            toast.info('You already liked this song');
+          } else {
+            toast.info('You can only vote for one song');
+          }
+          return;
+        }
+        
+        // Add the new vote
+        const { error } = await supabase
+          .from('song_votes')
+          .insert({
+            song_id: parseInt(songId),
+            device_id: deviceId
+          });
+            
+        if (error) throw error;
+        
         toast.success('Vote counted!');
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to vote for song';
-        console.error('Error upvoting song:', error);
-        
-        // Show different toast messages based on known error conditions
-        if (errorMessage.includes('already liked')) {
-          toast.info('You already liked this song');
-        } else if (errorMessage.includes('three songs')) {
-          toast.info('You can only vote for three songs in total');
-        } else {
-          toast.error(errorMessage);
-        }
+        console.error('Error voting for song:', error);
+        toast.error('Failed to vote for song');
       }
     },
     
     removeVoteForSong: async (songId: string) => {
       try {
         // Using checkIsAdmin() directly to ensure we're checking the current state
-        const isAdmin = get().checkIsAdmin();
-        await removeVoteService(songId, isAdmin);
+        if (!get().checkIsAdmin()) {
+          toast.error('Only admins can remove votes');
+          return;
+        }
+        
+        console.log('Removing votes for song:', songId);
+        
+        // Remove all votes for the specified song
+        const { error } = await supabase
+          .from('song_votes')
+          .delete()
+          .eq('song_id', parseInt(songId));
+          
+        if (error) throw error;
+        
         toast.success('Votes removed for this song');
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to remove votes';
         console.error('Error removing votes for song:', error);
-        toast.error(errorMessage);
+        toast.error('Failed to remove votes');
       }
     },
     
     resetVotes: async () => {
       try {
         // Using checkIsAdmin() directly to ensure we're checking the current state
-        const isAdmin = get().checkIsAdmin();
-        await resetVotesService(isAdmin);
+        if (!get().checkIsAdmin()) {
+          toast.error('Only admins can reset votes');
+          return;
+        }
+        
+        console.log('Resetting all votes');
+        
+        // Delete all votes from song_votes table first
+        const { error: deleteError } = await supabase
+          .from('song_votes')
+          .delete()
+          .neq('id', 0); // This will match all rows
+          
+        if (deleteError) throw deleteError;
+        
+        // Reset vote counts in LeSongs table
+        const { error: updateError } = await supabase
+          .from('LeSongs')
+          .update({ votes: 0, updated_at: new Date().toISOString() })
+          .neq('id', 0); // This will match all rows
+        
+        if (updateError) throw updateError;
+        
         toast.success('All votes have been reset');
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to reset votes';
         console.error('Error resetting votes:', error);
-        toast.error(errorMessage);
+        toast.error('Failed to reset votes');
       }
     },
   }),

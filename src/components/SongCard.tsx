@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
@@ -15,31 +14,27 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
-  const [isCheckingVotes, setIsCheckingVotes] = useState(true);
   
   // Check if user has voted for this song
   const checkUserVotes = async () => {
     try {
-      setIsCheckingVotes(true);
       const votedSongId = await getUserVotedSong();
       const hasVotedForThisSong = votedSongId === song.id;
       setHasVoted(hasVotedForThisSong);
     } catch (error) {
       console.error("Error checking user votes:", error);
       setHasVoted(false);
-    } finally {
-      setIsCheckingVotes(false);
     }
   };
   
-  // Update when song changes or when component mounts
+  // Update when song changes or user changes
   useEffect(() => {
     setVoteCount(song.votes);
     checkUserVotes();
   }, [song]);
   
   const handleVoteClick = async () => {
-    if (isAnimating || hasVoted || isCheckingVotes) return; // Prevent click if already voted or animating or checking
+    if (isAnimating || hasVoted) return; // Prevent click if already voted or animating
     
     setIsAnimating(true);
     
@@ -117,10 +112,10 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         <div className="flex-shrink-0 flex flex-col items-center gap-1">
           <button
             onClick={handleVoteClick}
-            disabled={isAnimating || hasVoted || isCheckingVotes}
+            disabled={isAnimating || hasVoted}
             className={cn(
               "p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30",
-              (isAnimating || hasVoted || isCheckingVotes) ? "cursor-not-allowed" : "hover:bg-muted"
+              (isAnimating || hasVoted) ? "cursor-not-allowed" : "hover:bg-muted"
             )}
             aria-label={hasVoted ? `Already liked ${song.title}` : `Like ${song.title}`}
           >

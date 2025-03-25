@@ -12,4 +12,3 @@ AS $$
     AND is_admin = true
   );
 $$;
-

@@ -1,5 +1,5 @@
 
-import { Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
@@ -11,7 +11,7 @@ import './App.css';
 
 function App() {
   return (
-    <>
+    <BrowserRouter>
       <SupabaseListener />
       <Routes>
         <Route path="/" element={<Index />} />
@@ -20,7 +20,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster position="top-center" />
-    </>
+    </BrowserRouter>
   );
 }
 
