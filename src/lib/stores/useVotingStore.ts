@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -13,9 +12,7 @@ interface VotingState extends BaseState {
 }
 
 // Create a stable fingerprint promise that can be reused
-const fpPromise = FingerprintJS.load({
-  monitoring: false, // Disable monitoring for privacy
-});
+const fpPromise = FingerprintJS.load();
 
 // Cache for the fingerprint value
 let cachedFingerprint: string | null = null;
@@ -53,14 +50,11 @@ const getDeviceId = async (): Promise<string> => {
     
     console.log('Generating new fingerprint...');
     
-    // Get fingerprint components with enhanced stability options
+    // Get fingerprint components with default options
     const fp = await fpPromise;
-    const result = await fp.get({
-      extendedResult: true // Get more data for better fingerprinting
-    });
+    const result = await fp.get();
     
-    // Use a combination of components for better stability
-    // Take the visitorId as the base
+    // Get the visitorId which is designed to be stable
     let deviceId = result.visitorId;
     
     console.log('Generated new fingerprint:', deviceId);
