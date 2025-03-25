@@ -106,12 +106,6 @@ export type Database = {
         }
         Returns: number
       }
-      get_ip_vote_count: {
-        Args: {
-          ip_addr: string
-        }
-        Returns: number
-      }
       get_public_url: {
         Args: {
           bucket: string
@@ -125,14 +119,6 @@ export type Database = {
           song_id: number
           user_id: string
         }[]
-      }
-      has_voted_for_song: {
-        Args: {
-          device_id_param: string
-          song_id_param: number
-          ip_param: string
-        }
-        Returns: boolean
       }
       is_admin:
         | {

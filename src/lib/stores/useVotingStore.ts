@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -148,13 +149,15 @@ export const useVotingStore = createBaseStore<VotingState>(
         // Get user's IP address
         const ipAddress = await getUserIpAddress();
         
-        // Use the new RPC function to get vote count
-        const { data, error } = await supabase
-          .rpc('get_ip_vote_count', { ip_addr: ipAddress });
+        // Count how many votes this IP has used
+        const { data, error, count } = await supabase
+          .from('song_votes')
+          .select('id', { count: 'exact' })
+          .eq('ip_address', ipAddress);
           
         if (error) throw error;
         
-        return data || 0;
+        return count || 0;
       } catch (error) {
         console.error('Error getting user vote count:', error);
         return 0;
@@ -176,18 +179,18 @@ export const useVotingStore = createBaseStore<VotingState>(
         // Get user's IP address
         const ipAddress = await getUserIpAddress();
         
-        // Check if user already voted for THIS song using the new RPC function
-        const { data: hasVoted, error: checkVoteError } = await supabase
-          .rpc('has_voted_for_song', { 
-            device_id_param: deviceId,
-            song_id_param: parseInt(songId),
-            ip_param: ipAddress
-          });
+        // Check if user already voted for THIS song
+        const { data: existingVote, error: checkExistingError } = await supabase
+          .from('song_votes')
+          .select('id')
+          .or(`device_id.eq.${deviceId},ip_address.eq.${ipAddress}`)
+          .eq('song_id', parseInt(songId))
+          .maybeSingle();
           
-        if (checkVoteError) throw checkVoteError;
+        if (checkExistingError) throw checkExistingError;
         
         // If already voted for this song, show message and return
-        if (hasVoted) {
+        if (existingVote) {
           toast.info('You already liked this song');
           return;
         }
