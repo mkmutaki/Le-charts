@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Music, Shield, LogIn, LogOut } from 'lucide-react';
@@ -15,6 +16,11 @@ export const Navbar = () => {
   // Get the admin status when component mounts or currentUser changes
   useEffect(() => {
     const checkAdmin = async () => {
+      if (!currentUser) {
+        setIsAdmin(false);
+        return;
+      }
+      
       const adminStatus = await checkIsAdmin();
       setIsAdmin(adminStatus);
     };
@@ -75,14 +81,33 @@ export const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {isAdmin && (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 bg-red-100 text-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+            {currentUser ? (
+              <>
+                {isAdmin && (
+                  <Link 
+                    to="/admin"
+                    className="flex items-center gap-1.5 bg-accent text-accent-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent/80 transition-colors"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 bg-red-100 text-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <Link 
+                to="/login"
+                className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-colors"
               >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </button>
+                <LogIn className="h-4 w-4" />
+                <span>Login</span>
+              </Link>
             )}
           </div>
         </div>

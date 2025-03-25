@@ -23,11 +23,19 @@ export const SupabaseListener = () => {
           setCurrentUser(null);
           setSongStoreUser(null);
           toast.info('Signed out');
+          
+          // We still need to fetch songs for anonymous users
+          await fetchSongs();
           return;
         }
         
         if (!session) {
           console.log("No session available in auth state change");
+          
+          // Even with no session, we should still fetch songs for anonymous users
+          if (event !== 'INITIAL_SESSION') {  // Skip fetching twice during initial load
+            await fetchSongs();
+          }
           return;
         }
 
