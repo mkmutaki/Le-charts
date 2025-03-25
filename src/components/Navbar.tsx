@@ -70,12 +70,12 @@ export const Navbar = () => {
             <Link to="/" className="flex items-center gap-2">
               <Music className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-semibold tracking-tight">
-                MusicChart
+                LeCharts
               </h1>
             </Link>
           </div>
           
-          <div className="flex items-center gap-3">
+          {/* <div className="flex items-center gap-3">
             {currentUser ? (
               <>
                 {isAdmin && (
@@ -105,7 +105,7 @@ export const Navbar = () => {
                 <span>Admin Login</span>
               </Link>
             )}
-          </div>
+          </div> */}
         </div>
       </header>
       

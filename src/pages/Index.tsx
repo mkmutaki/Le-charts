@@ -59,11 +59,11 @@ const Index = () => {
         <div className="mb-8 md:mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold">
-                Top Charts
+              <h2 className=" text-3xl md:text-4xl font-bold">
+                Top 10 LeSongs
               </h2>
-              <p className="text-muted-foreground mt-2">
-                Vote for your favorite LeSongs
+              <p className="text-muted-foreground mt-2 text-start ml-1">
+                Vote for your favorite
               </p>
             </div>
           </div>

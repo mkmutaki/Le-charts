@@ -17,16 +17,8 @@ export const EmptyState = ({ onAddClick }: EmptyStateProps) => {
       </h3>
       
       <p className="text-muted-foreground text-center max-w-md mb-6">
-        Add your favorite songs to the chart and vote for the ones you love.
+        Your favorite Lesongs will be added to the chart, vote for the ONE you love.
       </p>
-      
-      <button
-        onClick={onAddClick}
-        className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:opacity-90 transition-all duration-200 active:scale-95"
-      >
-        <Plus className="h-4 w-4" />
-        <span>Add First Song</span>
-      </button>
     </div>
   );
 };
