@@ -5,8 +5,9 @@ import { useAuthStore, useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
-  const { setCurrentUser } = useAuthStore();
-  const { setCurrentUser: setSongStoreUser, fetchSongs } = useSongStore();
+  const setCurrentUser = useAuthStore(state => state.setCurrentUser);
+  const setSongStoreUser = useSongStore(state => state.setCurrentUser);
+  const fetchSongs = useSongStore(state => state.fetchSongs);
   const initialCheckDone = useRef(false);
 
   useEffect(() => {
