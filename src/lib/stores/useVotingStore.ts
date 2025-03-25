@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -9,6 +10,7 @@ interface VotingState extends BaseState {
   getUserVotedSong: () => Promise<string | null>;
   resetVotes: () => Promise<void>;
   removeVoteForSong: (songId: string) => Promise<void>;
+  getUserVoteCount: () => Promise<number>;
 }
 
 // Create a stable fingerprint promise that can be reused
@@ -85,6 +87,26 @@ const getDeviceId = async (): Promise<string> => {
   }
 };
 
+// Function to get user's IP address using an external service
+const getUserIpAddress = async (): Promise<string> => {
+  try {
+    // Use a reliable external service that returns JSON
+    const response = await fetch('https://api.ipify.org?format=json');
+    if (!response.ok) {
+      throw new Error('Failed to fetch IP address');
+    }
+    
+    const data = await response.json();
+    console.log('Retrieved IP address:', data.ip);
+    return data.ip;
+  } catch (error) {
+    console.error('Error getting IP address:', error);
+    // Return a placeholder if we can't get the IP
+    // This will still allow voting, but may not enforce the limit correctly
+    return 'unknown-ip';
+  }
+};
+
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
     getUserVotedSong: async () => {
@@ -97,11 +119,15 @@ export const useVotingStore = createBaseStore<VotingState>(
           return null;
         }
         
-        // Check if user has already voted for a song
+        // Get user's IP address
+        const ipAddress = await getUserIpAddress();
+        
+        // Check if user has already voted for a song using both device ID and IP
         const { data, error } = await supabase
           .from('song_votes')
           .select('song_id')
           .eq('device_id', deviceId)
+          .eq('ip_address', ipAddress)
           .maybeSingle();
           
         if (error) throw error;
@@ -118,6 +144,26 @@ export const useVotingStore = createBaseStore<VotingState>(
       }
     },
     
+    getUserVoteCount: async () => {
+      try {
+        // Get user's IP address
+        const ipAddress = await getUserIpAddress();
+        
+        // Count how many votes this IP has used
+        const { data, error, count } = await supabase
+          .from('song_votes')
+          .select('id', { count: 'exact' })
+          .eq('ip_address', ipAddress);
+          
+        if (error) throw error;
+        
+        return count || 0;
+      } catch (error) {
+        console.error('Error getting user vote count:', error);
+        return 0;
+      }
+    },
+    
     upvoteSong: async (songId: string) => {
       try {
         console.log('Upvoting song:', songId);
@@ -130,22 +176,37 @@ export const useVotingStore = createBaseStore<VotingState>(
           return;
         }
         
-        // Check if user already voted for ANY song
-        const { data: existingVotes, error: checkError } = await supabase
-          .from('song_votes')
-          .select('song_id')
-          .eq('device_id', deviceId);
-          
-        if (checkError) throw checkError;
+        // Get user's IP address
+        const ipAddress = await getUserIpAddress();
         
-        // User already voted for a song - votes are immutable
-        if (existingVotes && existingVotes.length > 0) {
-          const currentVotedSongId = existingVotes[0].song_id.toString();
-          if (currentVotedSongId === songId) {
-            toast.info('You already liked this song');
-          } else {
-            toast.info('You can only vote for one song');
-          }
+        // Check if user already voted for THIS song (using device ID and IP)
+        const { data: existingVote, error: checkExistingError } = await supabase
+          .from('song_votes')
+          .select('id')
+          .eq('device_id', deviceId)
+          .eq('ip_address', ipAddress)
+          .eq('song_id', parseInt(songId))
+          .maybeSingle();
+          
+        if (checkExistingError) throw checkExistingError;
+        
+        // If already voted for this song, show message and return
+        if (existingVote) {
+          toast.info('You already liked this song');
+          return;
+        }
+        
+        // Check how many total votes this IP address has
+        const { count, error: countError } = await supabase
+          .from('song_votes')
+          .select('id', { count: 'exact' })
+          .eq('ip_address', ipAddress);
+          
+        if (countError) throw countError;
+        
+        // Limit to 3 votes per IP address
+        if (count !== null && count >= 3) {
+          toast.info('You can only vote for three songs in total');
           return;
         }
         
@@ -154,10 +215,23 @@ export const useVotingStore = createBaseStore<VotingState>(
           .from('song_votes')
           .insert({
             song_id: parseInt(songId),
-            device_id: deviceId
+            device_id: deviceId,
+            ip_address: ipAddress,
+            voted_at: new Date().toISOString()
           });
             
         if (error) throw error;
+        
+        // Update the vote count in the LeSongs table
+        const { error: updateError } = await supabase
+          .from('LeSongs')
+          .update({ 
+            votes: supabase.rpc('increment', { x: 1 }), 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', parseInt(songId));
+          
+        if (updateError) throw updateError;
         
         toast.success('Vote counted!');
       } catch (error) {
@@ -176,6 +250,14 @@ export const useVotingStore = createBaseStore<VotingState>(
         
         console.log('Removing votes for song:', songId);
         
+        // First get the count of votes for this song to update the song's vote count
+        const { count, error: countError } = await supabase
+          .from('song_votes')
+          .select('id', { count: 'exact' })
+          .eq('song_id', parseInt(songId));
+          
+        if (countError) throw countError;
+        
         // Remove all votes for the specified song
         const { error } = await supabase
           .from('song_votes')
@@ -183,6 +265,17 @@ export const useVotingStore = createBaseStore<VotingState>(
           .eq('song_id', parseInt(songId));
           
         if (error) throw error;
+        
+        // Update the song's vote count to zero
+        const { error: updateError } = await supabase
+          .from('LeSongs')
+          .update({ 
+            votes: 0,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', parseInt(songId));
+          
+        if (updateError) throw updateError;
         
         toast.success('Votes removed for this song');
       } catch (error) {
