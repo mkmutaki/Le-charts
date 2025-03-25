@@ -8,7 +8,7 @@ AS $$
   SELECT EXISTS (
     SELECT 1
     FROM user_roles
-    WHERE user_id = $1
+    WHERE id = $1
     AND is_admin = true
   );
 $$;
