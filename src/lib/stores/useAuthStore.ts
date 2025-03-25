@@ -20,16 +20,12 @@ export const useAuthStore = createBaseStore<AuthState>(
       try {
         console.log("Checking admin status for user:", currentUser.id);
         
-        // DEBUGGING: Log the user ID being sent to the RPC
-        console.log("RPC is_admin being called with user_id:", currentUser.id);
-        
-        // Using a flag to track if we're already updating to prevent loops
+        // Get admin status from the database
         const { data, error } = await supabase.rpc('is_admin', {
           user_id: currentUser.id
         });
           
-        // DEBUGGING: Log the raw response from the RPC
-        console.log("RPC is_admin raw response:", { data, error });
+        console.log("is_admin RPC response:", { data, error });
         
         if (error) {
           console.error('Error checking admin status:', error);
@@ -37,18 +33,13 @@ export const useAuthStore = createBaseStore<AuthState>(
         }
         
         const isAdmin = Boolean(data);
-        
-        // DEBUGGING: Log the processed boolean result
-        console.log("Admin status after processing:", isAdmin);
+        console.log("Admin status from DB:", isAdmin);
         
         // Only update the user object if the admin status has changed
         if (currentUser.isAdmin !== isAdmin) {
-          console.log("Admin status changed, updating user", isAdmin);
-          set({ 
-            currentUser: { ...currentUser, isAdmin } 
-          } as Partial<AuthState>);
-        } else {
-          console.log("Admin status unchanged:", isAdmin);
+          console.log("Admin status changed, updating user to:", isAdmin);
+          const updatedUser = { ...currentUser, isAdmin };
+          set({ currentUser: updatedUser } as Partial<AuthState>);
         }
         
         return isAdmin;

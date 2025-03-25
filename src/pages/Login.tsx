@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,13 +10,13 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, checkIsAdmin } = useAuthStore();
+  const { currentUser, checkAdminStatus } = useAuthStore();
   
-  if (currentUser && checkIsAdmin()) {
+  if (currentUser && currentUser.isAdmin) {
     return <Navigate to="/admin" replace />;
   }
   
-  if (currentUser && !checkIsAdmin()) {
+  if (currentUser && !currentUser.isAdmin) {
     return <Navigate to="/" replace />;
   }
   
@@ -46,27 +45,8 @@ const Login = () => {
       
       console.log("Login successful, response data:", data);
       
-      if (!data.user) {
-        console.error("No user returned from login");
-        toast.error("Login failed - no user returned");
-        return;
-      }
-      
-      console.log("User ID from login:", data.user.id);
-      
-      // Directly check admin status after login to verify
-      const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-        user_id: data.user.id
-      });
-      
-      console.log("Manual admin check after login:", { 
-        isAdmin,
-        error: adminError,
-        userId: data.user.id
-      });
-      
       // The auth state change listener will handle updating the store state
-      console.log("Login successful, waiting for auth state change to process admin status");
+      navigate('/');
       
     } catch (error) {
       console.error('Login error:', error);
