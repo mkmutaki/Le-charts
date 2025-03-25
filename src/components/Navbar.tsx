@@ -16,14 +16,8 @@ export const Navbar = () => {
   // Get the admin status when component mounts or currentUser changes
   useEffect(() => {
     const checkAdmin = async () => {
-      if (currentUser) {
-        console.log("Checking admin status in Navbar for user:", currentUser.id);
-        const adminStatus = await checkIsAdmin();
-        console.log("Admin status in Navbar:", adminStatus);
-        setIsAdmin(adminStatus);
-      } else {
-        setIsAdmin(false);
-      }
+      const adminStatus = await checkIsAdmin();
+      setIsAdmin(adminStatus);
     };
     
     checkAdmin();

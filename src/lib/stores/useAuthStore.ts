@@ -20,13 +20,16 @@ export const useAuthStore = createBaseStore<AuthState>(
       try {
         console.log("Checking admin status for user:", currentUser.id);
         
-        // Call the is_admin RPC function with user ID as text
+        // DEBUGGING: Log the user ID being sent to the RPC
+        console.log("RPC is_admin being called with user_id:", currentUser.id);
+        
+        // Using a flag to track if we're already updating to prevent loops
         const { data, error } = await supabase.rpc('is_admin', {
           user_id: currentUser.id
         });
           
-        // Log the response for debugging
-        console.log("RPC is_admin response:", { data, error });
+        // DEBUGGING: Log the raw response from the RPC
+        console.log("RPC is_admin raw response:", { data, error });
         
         if (error) {
           console.error('Error checking admin status:', error);
@@ -34,7 +37,9 @@ export const useAuthStore = createBaseStore<AuthState>(
         }
         
         const isAdmin = Boolean(data);
-        console.log("Admin status determined:", isAdmin);
+        
+        // DEBUGGING: Log the processed boolean result
+        console.log("Admin status after processing:", isAdmin);
         
         // Only update the user object if the admin status has changed
         if (currentUser.isAdmin !== isAdmin) {
