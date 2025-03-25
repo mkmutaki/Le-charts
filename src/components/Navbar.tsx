@@ -1,16 +1,37 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Music, Shield, LogIn, LogOut } from 'lucide-react';
+import { Music, Shield, LogIn, LogOut, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store';
+import { Toggle } from './ui/toggle';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { currentUser, checkIsAdmin } = useAuthStore();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check for saved theme preference or system preference
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') === 'dark' || 
+        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    return false;
+  });
+  
+  // Apply dark mode class on mount and when theme changes
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
   
   // Get the admin status when component mounts or currentUser changes
   useEffect(() => {
@@ -54,6 +75,10 @@ export const Navbar = () => {
     }
   };
 
+  const toggleDarkMode = () => {
+    setIsDarkMode(prev => !prev);
+  };
+
   return (
     <>
       <header 
@@ -75,10 +100,23 @@ export const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            <Toggle 
+              pressed={isDarkMode}
+              onPressedChange={toggleDarkMode}
+              aria-label="Toggle dark mode"
+              className="rounded-full p-2"
+            >
+              {isDarkMode ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Toggle>
+
             {isAdmin && (
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 bg-red-100 text-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                className="flex items-center gap-1.5 bg-red-100 text-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
