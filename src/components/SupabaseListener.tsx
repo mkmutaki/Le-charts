@@ -30,54 +30,66 @@ export const SupabaseListener = () => {
           return;
         }
         
-        if (!session) {
-          console.log("No session available in auth state change");
-          
-          // Even with no session, we should still fetch songs for anonymous users
-          if (event !== 'INITIAL_SESSION') {  // Skip fetching twice during initial load
+        // Handle both INITIAL_SESSION and SIGNED_IN cases with an active session
+        if (session) {
+          try {
+            const user = session.user;
+            console.log(`Auth state change (${event}) - User from session:`, user.id);
+            
+            // Get admin status from the database with updated parameter name
+            const { data: isAdmin, error } = await supabase.rpc('is_admin', {
+              id: user.id
+            });
+            
+            if (error) {
+              console.error(`Error checking admin status for event ${event}:`, error);
+              toast.error("Error checking permissions");
+              
+              // Even if there's an error checking admin status, still fetch songs
+              if (event === 'INITIAL_SESSION') {
+                await fetchSongs();
+              }
+              return;
+            }
+            
+            console.log(`Auth state changed (${event}) - Admin status from DB:`, isAdmin);
+            
+            const newUserState = {
+              id: user.id,
+              isAdmin: Boolean(isAdmin)
+            };
+            
+            // Update the user in both stores
+            setCurrentUser(newUserState);
+            setSongStoreUser(newUserState);
+            
+            // Fetch songs data after user state is updated
+            console.log(`Refreshing songs data after auth state change event: ${event}`);
             await fetchSongs();
+            
+            if (event === 'SIGNED_IN') {
+              toast.success('Signed in successfully');
+            }
+          } catch (error) {
+            console.error(`Error in auth state change handler for event ${event}:`, error);
+            toast.error("An error occurred while processing your authentication");
+            
+            // Make sure songs are still fetched on initial load even if there's an error
+            if (event === 'INITIAL_SESSION') {
+              await fetchSongs();
+            }
           }
           return;
         }
-
-        try {
-          const user = session.user;
-          console.log("User from session:", user.id);
-          
-          // Get admin status from the database with updated parameter name
-          const { data: isAdmin, error } = await supabase.rpc('is_admin', {
-            id: user.id
-          });
-          
-          if (error) {
-            console.error("Error checking admin status:", error);
-            toast.error("Error checking permissions");
-            return;
-          }
-          
-          console.log(`Auth state changed (${event}) - Admin status from DB:`, isAdmin);
-          
-          const newUserState = {
-            id: user.id,
-            isAdmin: Boolean(isAdmin)
-          };
-          
-          // Update the user in both stores
-          setCurrentUser(newUserState);
-          setSongStoreUser(newUserState);
-          
-          // Fetch songs data after user state is updated
-          // Important: This must come after setting user state to ensure
-          // correct authorization context for data fetching
-          console.log("Refreshing songs data after auth state change");
+        
+        // No session available
+        console.log(`No session available in auth state change event: ${event}`);
+        
+        // For initial session or other events with no session, we should still fetch songs
+        if (event === 'INITIAL_SESSION' || !initialCheckDone.current) {
+          console.log("No session, but fetching songs for anonymous users");
+          initialCheckDone.current = true;
           await fetchSongs();
-          
-          if (event === 'SIGNED_IN') {
-            toast.success('Signed in successfully');
-          }
-        } catch (error) {
-          console.error("Error in auth state change handler:", error);
-          toast.error("An error occurred while processing your authentication");
         }
       }
     );
