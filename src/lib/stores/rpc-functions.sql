@@ -1,8 +1,14 @@
 
--- This is just for reference, will be executed in a separate SQL block
-CREATE OR REPLACE FUNCTION public.decrement(x integer)
-RETURNS integer
-LANGUAGE sql IMMUTABLE STRICT
+-- This function checks if a user is an admin by looking up in the user_roles table
+CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
 AS $$
-  SELECT GREATEST(0, $1 - 1);
+  SELECT EXISTS (
+    SELECT 1
+    FROM user_roles
+    WHERE user_id = $1
+    AND is_admin = true
+  );
 $$;

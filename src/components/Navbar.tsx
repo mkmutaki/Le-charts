@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Music, Shield, LogIn, LogOut } from 'lucide-react';
@@ -10,7 +11,17 @@ export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { currentUser, checkIsAdmin } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = checkIsAdmin();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Get the admin status when component mounts or currentUser changes
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const adminStatus = await checkIsAdmin();
+      setIsAdmin(adminStatus);
+    };
+    
+    checkAdmin();
+  }, [currentUser, checkIsAdmin]);
 
   useEffect(() => {
     const handleScroll = () => {
