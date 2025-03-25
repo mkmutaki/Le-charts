@@ -3,17 +3,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '../types';
 
-// Create dummy users for development
-export const dummyUser: User = {
-  id: 'user-1',
-  isAdmin: false  // Set to false for non-admin mode
-};
-
-export const dummyAdmin: User = {
-  id: 'admin-1',
-  isAdmin: true
-};
-
 // Base state interface with shared properties
 export interface BaseState {
   currentUser: User | null;
@@ -30,7 +19,7 @@ export const createBaseStore = <T extends BaseState>(
   return create<T>()(
     persist(
       (set, get) => ({
-        currentUser: null, // Start with no user instead of dummy user
+        currentUser: null, // Start with no user
         isLoading: false,
         
         setCurrentUser: (user) => {

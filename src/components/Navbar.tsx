@@ -1,16 +1,15 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Music, Plus, Shield, LogIn, LogOut } from 'lucide-react';
+import { Music, Shield, LogIn, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useSongStore, useAuthStore, toggleAdminMode } from '@/lib/store';
+import { useAuthStore } from '@/lib/store';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { currentUser } = useAuthStore();
-  const { checkIsAdmin } = useAuthStore();
+  const { currentUser, checkIsAdmin } = useAuthStore();
   const navigate = useNavigate();
   const isAdmin = checkIsAdmin();
 
@@ -65,22 +64,6 @@ export const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Show admin mode toggle only in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <button
-                onClick={toggleAdminMode}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                  isAdmin 
-                    ? "bg-amber-100 text-amber-800" 
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                <Shield className="h-3.5 w-3.5" />
-                {isAdmin ? "Admin Mode" : "User Mode"}
-              </button>
-            )}
-            
             {currentUser ? (
               <>
                 {isAdmin && (
