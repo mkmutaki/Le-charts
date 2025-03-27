@@ -54,8 +54,8 @@ export const SupabaseListener = () => {
       console.log(`Refreshing songs data after auth state change event: ${eventType}`);
       await fetchSongs();
       
-      // Only show sign-in toast for actual SIGNED_IN events, not for session recovery on page reload
-      if (eventType === 'SIGNED_IN') {
+      // Only show sign-in toast for explicit SIGNED_IN events, not for session recovery
+      if (eventType === 'SIGNED_IN' && !eventType.startsWith('INITIAL')) {
         toast.success('Signed in successfully');
       }
     } catch (error) {
@@ -141,7 +141,7 @@ export const SupabaseListener = () => {
         
         // Process user authentication with delay to avoid race conditions
         setTimeout(() => {
-          // Use 'INITIAL_SESSION' instead of 'SIGNED_IN' to avoid showing the success toast on page reload
+          // Use 'INITIAL_SESSION' event type to avoid showing the success toast on page reload
           processUserAuth(user, 'INITIAL_SESSION');
         }, 0);
         
