@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore, useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
@@ -9,6 +9,62 @@ export const SupabaseListener = () => {
   const setSongStoreUser = useSongStore(state => state.setCurrentUser);
   const fetchSongs = useSongStore(state => state.fetchSongs);
   const initialCheckDone = useRef(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Track auth state processing to prevent concurrent operations
+  const processingRef = useRef(false);
+
+  // Process user authentication
+  const processUserAuth = async (user, eventType) => {
+    // Prevent concurrent processing of the same user
+    if (processingRef.current) {
+      console.log(`Auth processing already in progress, skipping redundant ${eventType} event`);
+      return;
+    }
+    
+    processingRef.current = true;
+    setIsProcessing(true);
+    
+    try {
+      console.log(`Processing auth state change (${eventType}) for user:`, user.id);
+      
+      // Get admin status from the database with updated parameter name
+      const { data: isAdmin, error } = await supabase.rpc('is_admin', {
+        id: user.id
+      });
+      
+      if (error) {
+        console.error(`Error checking admin status for event ${eventType}:`, error);
+        toast.error("Error checking permissions");
+        return;
+      }
+      
+      console.log(`Auth state changed (${eventType}) - Admin status from DB:`, isAdmin);
+      
+      const newUserState = {
+        id: user.id,
+        isAdmin: Boolean(isAdmin)
+      };
+      
+      // Update the user in both stores
+      setCurrentUser(newUserState);
+      setSongStoreUser(newUserState);
+      
+      // Fetch songs data after user state is updated
+      console.log(`Refreshing songs data after auth state change event: ${eventType}`);
+      await fetchSongs();
+      
+      if (eventType === 'SIGNED_IN') {
+        toast.success('Signed in successfully');
+      }
+    } catch (error) {
+      console.error(`Error in auth state change handler for event ${eventType}:`, error);
+      toast.error("An error occurred while processing your authentication");
+    } finally {
+      processingRef.current = false;
+      setIsProcessing(false);
+    }
+  };
 
   useEffect(() => {
     console.log("Setting up SupabaseListener");
@@ -25,60 +81,23 @@ export const SupabaseListener = () => {
           setSongStoreUser(null);
           toast.info('Signed out');
           
-          // We still need to fetch songs for anonymous users
-          await fetchSongs();
+          // Prevent race conditions by delaying fetch
+          setTimeout(async () => {
+            // We still need to fetch songs for anonymous users
+            await fetchSongs();
+          }, 0);
           return;
         }
         
         // Handle both INITIAL_SESSION and SIGNED_IN cases with an active session
         if (session) {
-          try {
-            const user = session.user;
-            console.log(`Auth state change (${event}) - User from session:`, user.id);
-            
-            // Get admin status from the database with updated parameter name
-            const { data: isAdmin, error } = await supabase.rpc('is_admin', {
-              id: user.id
-            });
-            
-            if (error) {
-              console.error(`Error checking admin status for event ${event}:`, error);
-              toast.error("Error checking permissions");
-              
-              // Even if there's an error checking admin status, still fetch songs
-              if (event === 'INITIAL_SESSION') {
-                await fetchSongs();
-              }
-              return;
-            }
-            
-            console.log(`Auth state changed (${event}) - Admin status from DB:`, isAdmin);
-            
-            const newUserState = {
-              id: user.id,
-              isAdmin: Boolean(isAdmin)
-            };
-            
-            // Update the user in both stores
-            setCurrentUser(newUserState);
-            setSongStoreUser(newUserState);
-            
-            // Fetch songs data after user state is updated
-            console.log(`Refreshing songs data after auth state change event: ${event}`);
-            await fetchSongs();
-            
-            if (event === 'SIGNED_IN') {
-              toast.success('Signed in successfully');
-            }
-          } catch (error) {
-            console.error(`Error in auth state change handler for event ${event}:`, error);
-            toast.error("An error occurred while processing your authentication");
-            
-            // Make sure songs are still fetched on initial load even if there's an error
-            if (event === 'INITIAL_SESSION') {
-              await fetchSongs();
-            }
-          }
+          const user = session.user;
+          console.log(`Auth state change (${event}) - User from session:`, user.id);
+          
+          // Use setTimeout to prevent blocking the auth state change handler
+          setTimeout(() => {
+            processUserAuth(user, event);
+          }, 0);
           return;
         }
         
@@ -89,7 +108,9 @@ export const SupabaseListener = () => {
         if (event === 'INITIAL_SESSION' || !initialCheckDone.current) {
           console.log("No session, but fetching songs for anonymous users");
           initialCheckDone.current = true;
-          await fetchSongs();
+          setTimeout(async () => {
+            await fetchSongs();
+          }, 0);
         }
       }
     );
@@ -117,32 +138,10 @@ export const SupabaseListener = () => {
         const user = session.user;
         console.log("Initial session found for user:", user.id);
         
-        // Get admin status from the database using the updated parameter name
-        const { data: isAdmin, error } = await supabase.rpc('is_admin', {
-          id: user.id
-        });
-        
-        if (error) {
-          console.error("Error checking admin status on initial load:", error);
-          // Even if there's an error, still fetch songs
-          await fetchSongs();
-          return;
-        }
-        
-        console.log("Initial admin status from DB:", isAdmin);
-        
-        const newUserState = {
-          id: user.id,
-          isAdmin: Boolean(isAdmin)
-        };
-        
-        // Update the user in both stores
-        setCurrentUser(newUserState);
-        setSongStoreUser(newUserState);
-        
-        // Fetch songs data after user state is updated
-        console.log("Refreshing songs data after initial session check");
-        await fetchSongs();
+        // Process user authentication with delay to avoid race conditions
+        setTimeout(() => {
+          processUserAuth(user, 'INITIAL_SESSION');
+        }, 0);
         
       } catch (error) {
         console.error("Error in initial session check:", error);
@@ -160,5 +159,7 @@ export const SupabaseListener = () => {
     };
   }, [setCurrentUser, setSongStoreUser, fetchSongs]);
 
+  // Render nothing, but prevent app from rendering content until authentication is checked
+  // This prevents the UI from flickering between unauthenticated and authenticated states
   return null;
 };
