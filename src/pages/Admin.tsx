@@ -7,7 +7,8 @@ import { AddSongModal } from '@/components/AddSongModal';
 import { EditSongModal } from '@/components/EditSongModal';
 
 const Admin = () => {
-  const { songs, fetchSongs, deleteSong } = useSongStore();
+  const { songs, deleteSong } = useSongStore();
+  const fetchSongs = useSongStore((state) => state.fetchSongs);
   const { resetVotes } = useVotingStore();
   const { currentUser, checkIsAdmin } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
@@ -15,20 +16,15 @@ const Admin = () => {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isAdmin = checkIsAdmin();
-  
+
   useEffect(() => {
-    const loadSongs = async () => {
-      await fetchSongs();
-      setIsLoading(false);
-    };
-    
-    loadSongs();
+    fetchSongs();
   }, [fetchSongs]);
-  
+
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -60,12 +56,12 @@ const Admin = () => {
       fetchSongs();
     }
   };
-  
+
   const handleEditSong = (song: Song) => {
     setSelectedSong(song);
     setIsEditSongOpen(true);
   };
-  
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card shadow-sm border-b">

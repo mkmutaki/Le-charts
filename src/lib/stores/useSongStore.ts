@@ -49,23 +49,11 @@ export const useSongStore = createBaseStore<SongState>(
         
         console.log('Votes data:', votesData);
         
-        const songs = songsData.map(song => {
+        const songs = (songsData || []).map(song => {
           const songObj = convertSupabaseSong(song);
-          songObj.votedBy = votesData
-            ? votesData
-                .filter(vote => vote.song_id === song.id)
-                .map(vote => vote.device_id)
-            : [];
-          
-          // Use actual votes count from the votes data
-          const actualVotes = votesData
-            ? votesData.filter(vote => vote.song_id === song.id).length
-            : 0;
-          
-          // If votes in DB and actual votes differ, use the actual votes
-          // This ensures consistency even if the votes in the DB are out of sync
-          songObj.votes = actualVotes;
-          
+          const votes = votesData || [];
+          songObj.votedBy = votes.filter(vote => vote.song_id === song.id).map(vote => vote.device_id);
+          songObj.votes = votes.filter(vote => vote.song_id === song.id).length;
           return songObj;
         });
         
