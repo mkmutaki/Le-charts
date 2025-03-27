@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
   const setCurrentUser = useAuthStore(state => state.setCurrentUser);
+  const currentUser = useAuthStore(state => state.currentUser);
   const setSongStoreUser = useSongStore(state => state.setCurrentUser);
   const fetchSongs = useSongStore(state => state.fetchSongs);
   const initialCheckDone = useRef(false);
@@ -27,6 +28,10 @@ export const SupabaseListener = () => {
     
     try {
       console.log(`Processing auth state change (${eventType}) for user:`, user.id);
+      
+      // Check if this is the same user that's already authenticated (for reload scenario)
+      const isSameUser = currentUser && currentUser.id === user.id;
+      console.log(`Is this the same user as the currently authenticated one? ${isSameUser}`);
       
       // Get admin status from the database with updated parameter name
       const { data: isAdmin, error } = await supabase.rpc('is_admin', {
@@ -54,8 +59,8 @@ export const SupabaseListener = () => {
       console.log(`Refreshing songs data after auth state change event: ${eventType}`);
       await fetchSongs();
       
-      // Only show sign-in toast for explicit SIGNED_IN events, not for session recovery
-      if (eventType === 'SIGNED_IN' && !eventType.startsWith('INITIAL')) {
+      // Only show sign-in toast for explicit SIGNED_IN events, not for session recovery or same user reload
+      if (eventType === 'SIGNED_IN' && !isSameUser && !eventType.startsWith('INITIAL')) {
         toast.success('Signed in successfully');
       }
     } catch (error) {
