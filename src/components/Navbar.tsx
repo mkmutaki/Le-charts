@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Music, Shield, LogIn, LogOut, Moon, Sun, LayoutDashboard } from 'lucide-react';
@@ -14,10 +13,9 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check for saved theme preference or system preference
+    // Always default to light mode
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      return localStorage.getItem('theme') === 'dark';
     }
     return false;
   });

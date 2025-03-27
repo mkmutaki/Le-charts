@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force light mode as default */
+:root:not(.dark) {
+  color-scheme: light;
+}
 
 @layer base {
   :root {
@@ -161,3 +165,15 @@
 .heart-beat {
   animation: heart-beat 0.8s ease-in-out;
 }
+
+/* Script to ensure light mode is the default */
+<script>
+  // Remove any dark mode class from document on initial load
+  document.documentElement.classList.remove('dark');
+  // Only set dark mode if explicitly saved as dark
+  if (localStorage.getItem('theme') === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    localStorage.setItem('theme', 'light');
+  }
+</script>
