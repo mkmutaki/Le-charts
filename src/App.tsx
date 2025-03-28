@@ -1,6 +1,6 @@
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/toaster';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
 import Admin from './pages/Admin';
@@ -17,7 +17,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <Toaster position="top-center" />
+      <Toaster />
     </BrowserRouter>
   );
 }
