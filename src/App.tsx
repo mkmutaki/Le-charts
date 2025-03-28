@@ -7,8 +7,6 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import { SupabaseListener } from './components/SupabaseListener';
 
-import './App.css';
-
 function App() {
   return (
     <BrowserRouter>

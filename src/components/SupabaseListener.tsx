@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore, useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
+import { createBaseStore } from '@/lib/stores/useBaseStore';
 
 export const SupabaseListener = () => {
   const setCurrentUser = useAuthStore(state => state.setCurrentUser);
@@ -10,9 +11,6 @@ export const SupabaseListener = () => {
   const setSongStoreUser = useSongStore(state => state.setCurrentUser);
   const fetchSongs = useSongStore(state => state.fetchSongs);
   const initialCheckDone = useRef(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Track auth state processing to prevent concurrent operations
   const processingRef = useRef(false);
 
   // Process user authentication
@@ -24,14 +22,12 @@ export const SupabaseListener = () => {
     }
     
     processingRef.current = true;
-    setIsProcessing(true);
     
     try {
       console.log(`Processing auth state change (${eventType}) for user:`, user.id);
       
       // Check if this is the same user that's already authenticated (for reload scenario)
       const isSameUser = currentUser && currentUser.id === user.id;
-      console.log(`Is this the same user as the currently authenticated one? ${isSameUser}`);
       
       // Get admin status from the database with updated parameter name
       const { data: isAdmin, error } = await supabase.rpc('is_admin', {
@@ -44,8 +40,6 @@ export const SupabaseListener = () => {
         return;
       }
       
-      console.log(`Auth state changed (${eventType}) - Admin status from DB:`, isAdmin);
-      
       const newUserState = {
         id: user.id,
         isAdmin: Boolean(isAdmin)
@@ -56,7 +50,6 @@ export const SupabaseListener = () => {
       setSongStoreUser(newUserState);
       
       // Fetch songs data after user state is updated
-      console.log(`Refreshing songs data after auth state change event: ${eventType}`);
       await fetchSongs();
       
       // Only show sign-in toast for explicit SIGNED_IN events, not for session recovery or same user reload
@@ -68,7 +61,6 @@ export const SupabaseListener = () => {
       toast.error("An error occurred while processing your authentication");
     } finally {
       processingRef.current = false;
-      setIsProcessing(false);
     }
   };
 
@@ -82,14 +74,12 @@ export const SupabaseListener = () => {
         
         if (event === 'SIGNED_OUT') {
           // Clear the user on sign out
-          console.log("User signed out, clearing user state");
           setCurrentUser(null);
           setSongStoreUser(null);
           toast.info('Signed out');
           
-          // Prevent race conditions by delaying fetch
+          // Fetch songs for anonymous users
           setTimeout(async () => {
-            // We still need to fetch songs for anonymous users
             await fetchSongs();
           }, 0);
           return;
@@ -98,7 +88,6 @@ export const SupabaseListener = () => {
         // Handle both INITIAL_SESSION and SIGNED_IN cases with an active session
         if (session) {
           const user = session.user;
-          console.log(`Auth state change (${event}) - User from session:`, user.id);
           
           // Use setTimeout to prevent blocking the auth state change handler
           setTimeout(() => {
@@ -112,7 +101,6 @@ export const SupabaseListener = () => {
         
         // For initial session or other events with no session, we should still fetch songs
         if (event === 'INITIAL_SESSION' || !initialCheckDone.current) {
-          console.log("No session, but fetching songs for anonymous users");
           initialCheckDone.current = true;
           setTimeout(async () => {
             await fetchSongs();
@@ -124,25 +112,21 @@ export const SupabaseListener = () => {
     // Check for existing session on mount - only if not already checked
     const checkInitialSession = async () => {
       if (initialCheckDone.current) {
-        console.log("Initial session already checked, skipping");
         return;
       }
       
       try {
         initialCheckDone.current = true;
-        console.log("Checking for initial session");
         
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          console.log("No active session found on initial load");
           // Even if no session, we still need to fetch songs for anonymous users
           await fetchSongs();
           return;
         }
         
         const user = session.user;
-        console.log("Initial session found for user:", user.id);
         
         // Process user authentication with delay to avoid race conditions
         setTimeout(() => {
@@ -166,7 +150,5 @@ export const SupabaseListener = () => {
     };
   }, [setCurrentUser, setSongStoreUser, fetchSongs]);
 
-  // Render nothing, but prevent app from rendering content until authentication is checked
-  // This prevents the UI from flickering between unauthenticated and authenticated states
   return null;
 };
