@@ -1,16 +1,14 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Remove dark mode on initial load, unless explicitly saved */
-<script>
-  if (localStorage.theme !== 'dark') {
-    document.documentElement.classList.remove('dark');
-  }
-</script>
+/* 
+ * Remove dark mode on initial load, unless explicitly saved 
+ * This is handled in main.tsx with JavaScript to ensure 
+ * dark mode is properly initialized
+ */
 
 @layer base {
   :root {
