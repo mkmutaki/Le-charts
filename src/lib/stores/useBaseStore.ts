@@ -19,15 +19,13 @@ export const createBaseStore = <T extends BaseState>(
   return create<T>()(
     persist(
       (set, get) => ({
-        currentUser: null, // Start with no user
+        currentUser: null,
         isLoading: false,
         
         setCurrentUser: (user) => {
-          console.log(`Setting current user in ${name}:`, user);
-          // Ensure we don't trigger unnecessary rerenders by setting to the same object
+          // Ensure we don't trigger unnecessary rerenders
           const currentUser = get().currentUser;
           if (JSON.stringify(currentUser) === JSON.stringify(user)) {
-            console.log("User is the same, not updating", name);
             return;
           }
           
@@ -36,12 +34,7 @@ export const createBaseStore = <T extends BaseState>(
         
         checkIsAdmin: () => {
           const { currentUser } = get();
-          if (!currentUser) {
-            return false;
-          }
-          
-          // Simply return the isAdmin property without any API calls
-          return Boolean(currentUser.isAdmin);
+          return Boolean(currentUser?.isAdmin);
         },
         
         ...config(set, get),

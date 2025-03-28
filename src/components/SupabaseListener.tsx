@@ -1,9 +1,8 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore, useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
-import { createBaseStore } from '@/lib/stores/useBaseStore';
 
 export const SupabaseListener = () => {
   const setCurrentUser = useAuthStore(state => state.setCurrentUser);
@@ -15,7 +14,6 @@ export const SupabaseListener = () => {
 
   // Process user authentication
   const processUserAuth = async (user, eventType) => {
-    // Prevent concurrent processing of the same user
     if (processingRef.current) {
       console.log(`Auth processing already in progress, skipping redundant ${eventType} event`);
       return;
@@ -26,10 +24,10 @@ export const SupabaseListener = () => {
     try {
       console.log(`Processing auth state change (${eventType}) for user:`, user.id);
       
-      // Check if this is the same user that's already authenticated (for reload scenario)
+      // Check if this is the same user that's already authenticated
       const isSameUser = currentUser && currentUser.id === user.id;
       
-      // Get admin status from the database with updated parameter name
+      // Get admin status from the database
       const { data: isAdmin, error } = await supabase.rpc('is_admin', {
         id: user.id
       });
@@ -52,7 +50,7 @@ export const SupabaseListener = () => {
       // Fetch songs data after user state is updated
       await fetchSongs();
       
-      // Only show sign-in toast for explicit SIGNED_IN events, not for session recovery or same user reload
+      // Only show sign-in toast for explicit SIGNED_IN events
       if (eventType === 'SIGNED_IN' && !isSameUser && !eventType.startsWith('INITIAL')) {
         toast.success('Signed in successfully');
       }
@@ -65,8 +63,6 @@ export const SupabaseListener = () => {
   };
 
   useEffect(() => {
-    console.log("Setting up SupabaseListener");
-    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -85,7 +81,7 @@ export const SupabaseListener = () => {
           return;
         }
         
-        // Handle both INITIAL_SESSION and SIGNED_IN cases with an active session
+        // Handle cases with an active session
         if (session) {
           const user = session.user;
           
@@ -96,10 +92,7 @@ export const SupabaseListener = () => {
           return;
         }
         
-        // No session available
-        console.log(`No session available in auth state change event: ${event}`);
-        
-        // For initial session or other events with no session, we should still fetch songs
+        // For initial session with no session, still fetch songs
         if (event === 'INITIAL_SESSION' || !initialCheckDone.current) {
           initialCheckDone.current = true;
           setTimeout(async () => {
@@ -109,11 +102,9 @@ export const SupabaseListener = () => {
       }
     );
 
-    // Check for existing session on mount - only if not already checked
+    // Check for existing session on mount
     const checkInitialSession = async () => {
-      if (initialCheckDone.current) {
-        return;
-      }
+      if (initialCheckDone.current) return;
       
       try {
         initialCheckDone.current = true;
@@ -121,7 +112,7 @@ export const SupabaseListener = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // Even if no session, we still need to fetch songs for anonymous users
+          // Even if no session, fetch songs for anonymous users
           await fetchSongs();
           return;
         }
@@ -130,7 +121,6 @@ export const SupabaseListener = () => {
         
         // Process user authentication with delay to avoid race conditions
         setTimeout(() => {
-          // Use 'INITIAL_SESSION' event type to avoid showing the success toast on page reload
           processUserAuth(user, 'INITIAL_SESSION');
         }, 0);
         
@@ -145,7 +135,6 @@ export const SupabaseListener = () => {
     checkInitialSession();
 
     return () => {
-      console.log("Cleaning up SupabaseListener");
       subscription.unsubscribe();
     };
   }, [setCurrentUser, setSongStoreUser, fetchSongs]);
