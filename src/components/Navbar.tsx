@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Music, Moon, Sun, LayoutDashboard, LogOut } from 'lucide-react';
@@ -14,14 +13,12 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Default to light mode
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark';
+      return localStorage.getItem('theme') !== 'light';
     }
-    return false;
+    return true;
   });
   
-  // Apply dark mode class on mount and when theme changes
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -32,7 +29,6 @@ export const Navbar = () => {
     }
   }, [isDarkMode]);
   
-  // Get the admin status when component mounts or currentUser changes
   useEffect(() => {
     const checkAdmin = async () => {
       if (!currentUser) {
