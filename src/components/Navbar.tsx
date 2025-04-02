@@ -10,7 +10,7 @@ import { Toggle } from './ui/toggle';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { currentUser, checkIsAdmin } = useAuthStore();
+  const { currentUser, checkAdminStatus } = useAuthStore();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -35,12 +35,22 @@ export const Navbar = () => {
   // Get the admin status when component mounts or currentUser changes
   useEffect(() => {
     const checkAdmin = async () => {
-      const adminStatus = await checkIsAdmin();
-      setIsAdmin(adminStatus);
+      if (!currentUser) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      try {
+        const adminStatus = await checkAdminStatus();
+        setIsAdmin(adminStatus);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      }
     };
     
     checkAdmin();
-  }, [currentUser, checkIsAdmin]);
+  }, [currentUser, checkAdminStatus]);
 
   useEffect(() => {
     const handleScroll = () => {

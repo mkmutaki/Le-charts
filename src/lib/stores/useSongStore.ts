@@ -33,8 +33,6 @@ export const useSongStore = createBaseStore<SongState>(
           throw songsError;
         }
         
-        console.log('Songs data:', songsData);
-        
         // Important: Always fetch votes data separately
         // This is now allowed for anonymous users thanks to the new RLS policy
         console.log('Fetching votes data...');
@@ -46,8 +44,6 @@ export const useSongStore = createBaseStore<SongState>(
           console.error('Error fetching votes:', votesError);
           throw votesError;
         }
-        
-        console.log('Votes data:', votesData);
         
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
@@ -63,13 +59,11 @@ export const useSongStore = createBaseStore<SongState>(
             : 0;
           
           // If votes in DB and actual votes differ, use the actual votes
-          // This ensures consistency even if the votes in the DB are out of sync
           songObj.votes = actualVotes;
           
           return songObj;
         });
         
-        console.log('Processed songs with votes:', songs);
         set({ songs, isLoading: false });
       } catch (error) {
         console.error('Error fetching songs:', error);
@@ -79,19 +73,18 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     addSong: async (songData: SongFormData) => {
-      // Use the checkIsAdmin function from the store
-      const { currentUser, checkIsAdmin } = get();
-      const isAdmin = checkIsAdmin();
-      
-      console.log('Current user in addSong:', currentUser);
-      console.log('Is admin in addSong check?', isAdmin);
-      
-      if (!isAdmin) {
-        toast.error('Only admins can add songs');
-        return;
-      }
-      
       try {
+        // Verify admin status directly from the database before proceeding
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+          id: get().currentUser?.id
+        });
+        
+        if (adminError || !isAdmin) {
+          console.error('Error verifying admin status:', adminError);
+          toast.error('Only admins can add songs');
+          return;
+        }
+        
         console.log('Adding song with data:', songData);
         
         const { data, error } = await supabase
@@ -131,17 +124,18 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     updateSong: async (songId: string, songData: SongFormData) => {
-      // Use the checkIsAdmin function from the store
-      const isAdmin = get().checkIsAdmin();
-      
-      console.log('Updating song - Is admin?', isAdmin);
-      
-      if (!isAdmin) {
-        toast.error('Only admins can update songs');
-        return;
-      }
-      
       try {
+        // Verify admin status directly from the database before proceeding
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+          id: get().currentUser?.id
+        });
+        
+        if (adminError || !isAdmin) {
+          console.error('Error verifying admin status:', adminError);
+          toast.error('Only admins can update songs');
+          return;
+        }
+        
         const { error } = await supabase
           .from('LeSongs')
           .update({
@@ -181,17 +175,18 @@ export const useSongStore = createBaseStore<SongState>(
     },
     
     deleteSong: async (songId: string) => {
-      // Use the checkIsAdmin function from the store
-      const isAdmin = get().checkIsAdmin();
-      
-      console.log('Deleting song - Is admin?', isAdmin);
-      
-      if (!isAdmin) {
-        toast.error('Only admins can delete songs');
-        return;
-      }
-      
       try {
+        // Verify admin status directly from the database before proceeding
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+          id: get().currentUser?.id
+        });
+        
+        if (adminError || !isAdmin) {
+          console.error('Error verifying admin status:', adminError);
+          toast.error('Only admins can delete songs');
+          return;
+        }
+        
         console.log('Attempting to delete song with ID:', songId);
         
         const { error } = await supabase

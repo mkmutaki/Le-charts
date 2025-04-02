@@ -108,8 +108,13 @@ export const useVotingStore = createBaseStore<VotingState>(
     
     removeVoteForSong: async (songId: string) => {
       try {
-        // Using checkIsAdmin() directly to ensure we're checking the current state
-        if (!get().checkIsAdmin()) {
+        // Verify admin status directly from the database before proceeding
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+          id: get().currentUser?.id
+        });
+        
+        if (adminError || !isAdmin) {
+          console.error('Error verifying admin status:', adminError);
           toast.error('Only admins can remove votes');
           return;
         }
@@ -133,8 +138,13 @@ export const useVotingStore = createBaseStore<VotingState>(
     
     resetVotes: async () => {
       try {
-        // Using checkIsAdmin() directly to ensure we're checking the current state
-        if (!get().checkIsAdmin()) {
+        // Verify admin status directly from the database before proceeding
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+          id: get().currentUser?.id
+        });
+        
+        if (adminError || !isAdmin) {
+          console.error('Error verifying admin status:', adminError);
           toast.error('Only admins can reset votes');
           return;
         }

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -10,15 +10,45 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, checkIsAdmin } = useAuthStore();
+  const { currentUser, checkAdminStatus } = useAuthStore();
   
-  if (currentUser && checkIsAdmin()) {
-    return <Navigate to="/admin" replace />;
-  }
+  // Check admin status on mount and when currentUser changes
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      setIsCheckingAdmin(true);
+      
+      if (!currentUser) {
+        setIsAdmin(false);
+        setIsCheckingAdmin(false);
+        return;
+      }
+      
+      try {
+        const adminStatus = await checkAdminStatus();
+        setIsAdmin(adminStatus);
+      } catch (error) {
+        console.error('Error verifying admin status:', error);
+        setIsAdmin(false);
+      } finally {
+        setIsCheckingAdmin(false);
+      }
+    };
+    
+    verifyAdmin();
+  }, [currentUser, checkAdminStatus]);
   
-  if (currentUser && !checkIsAdmin()) {
-    return <Navigate to="/" replace />;
+  // Redirect based on authentication and admin status
+  if (!isCheckingAdmin) {
+    if (currentUser && isAdmin) {
+      return <Navigate to="/admin" replace />;
+    }
+    
+    if (currentUser && !isAdmin) {
+      return <Navigate to="/" replace />;
+    }
   }
   
   const handleLogin = async (e: React.FormEvent) => {
@@ -52,22 +82,8 @@ const Login = () => {
         return;
       }
       
-      console.log("User ID from login:", data.user.id);
-      
-      // Directly check admin status after login to verify
-      const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-        id: data.user.id
-      });
-      
-      console.log("Manual admin check after login:", { 
-        isAdmin,
-        error: adminError,
-        userId: data.user.id
-      });
-      
-      // The auth state change listener will handle updating the store state
-      console.log("Login successful, waiting for auth state change to process admin status");
-      
+      // The auth state change listener will handle updating the store
+      toast.success('Login successful');
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');
@@ -75,6 +91,20 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+  
+  // Show loading state while checking admin status
+  if (isCheckingAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="p-6 rounded-lg max-w-md text-center">
+          <h2 className="text-xl font-semibold mb-2">Verifying access...</h2>
+          <div className="mt-4 flex justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/10 px-4">

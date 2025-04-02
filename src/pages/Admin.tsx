@@ -1,32 +1,76 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil } from 'lucide-react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AddSongModal } from '@/components/AddSongModal';
 import { EditSongModal } from '@/components/EditSongModal';
+import { toast } from 'sonner';
 
 const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
-  const { currentUser, checkIsAdmin } = useAuthStore();
+  const { currentUser, checkAdminStatus } = useAuthStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isAdmin = checkIsAdmin();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      setIsCheckingAdmin(true);
+      
+      if (!currentUser) {
+        setIsAdmin(false);
+        setIsCheckingAdmin(false);
+        return;
+      }
+      
+      try {
+        const adminStatus = await checkAdminStatus();
+        setIsAdmin(adminStatus);
+      } catch (error) {
+        console.error('Error verifying admin status:', error);
+        toast.error('Failed to verify admin permissions');
+        setIsAdmin(false);
+      } finally {
+        setIsCheckingAdmin(false);
+      }
+    };
+    
+    verifyAdmin();
+  }, [currentUser, checkAdminStatus]);
   
   useEffect(() => {
     const loadSongs = async () => {
-      await fetchSongs();
-      setIsLoading(false);
+      if (!isCheckingAdmin && isAdmin) {
+        setIsLoading(true);
+        await fetchSongs();
+        setIsLoading(false);
+      }
     };
     
     loadSongs();
-  }, [fetchSongs]);
+  }, [isCheckingAdmin, isAdmin, fetchSongs]);
   
   if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+  
+  if (isCheckingAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="p-6 rounded-lg max-w-md text-center">
+          <h2 className="text-xl font-semibold mb-2">Verifying access...</h2>
+          <div className="mt-4 flex justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
   
   if (!isAdmin) {
@@ -47,17 +91,42 @@ const Admin = () => {
     );
   }
 
-  const handleResetVotes = () => {
+  const handleResetVotes = async () => {
     if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
-      resetVotes();
-      fetchSongs();
+      try {
+        const adminCheck = await checkAdminStatus();
+        if (!adminCheck) {
+          toast.error('Admin verification failed. Please log in again.');
+          navigate('/login');
+          return;
+        }
+        
+        await resetVotes();
+        await fetchSongs();
+        toast.success('All votes have been reset');
+      } catch (error) {
+        console.error('Error resetting votes:', error);
+        toast.error('Failed to reset votes');
+      }
     }
   };
 
   const handleDeleteSong = async (songId: string) => {
     if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
-      await deleteSong(songId);
-      fetchSongs();
+      try {
+        const adminCheck = await checkAdminStatus();
+        if (!adminCheck) {
+          toast.error('Admin verification failed. Please log in again.');
+          navigate('/login');
+          return;
+        }
+        
+        await deleteSong(songId);
+        toast.success('Song deleted successfully');
+      } catch (error) {
+        console.error('Error deleting song:', error);
+        toast.error('Failed to delete song');
+      }
     }
   };
   

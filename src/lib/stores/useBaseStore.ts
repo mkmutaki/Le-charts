@@ -32,6 +32,8 @@ export const createBaseStore = <T extends BaseState>(
           set({ currentUser: user } as Partial<T>);
         },
         
+        // Simple in-memory check for UI purposes only
+        // Critical operations should use checkAdminStatus() instead
         checkIsAdmin: () => {
           const { currentUser } = get();
           return Boolean(currentUser?.isAdmin);
