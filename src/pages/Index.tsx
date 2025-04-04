@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const Index = () => {
-  const { songs, fetchSongs } = useSongStore();
+  const { songs, fetchSongs, userVotedSongId } = useSongStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

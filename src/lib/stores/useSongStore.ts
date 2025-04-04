@@ -11,17 +11,24 @@ interface SongState extends BaseState {
   addSong: (songData: SongFormData) => Promise<void>;
   updateSong: (songId: string, songData: SongFormData) => Promise<void>;
   deleteSong: (songId: string) => Promise<void>;
+  userVotedSongId: string | null;
 }
 
 export const useSongStore = createBaseStore<SongState>(
   (set, get) => ({
     songs: [],
+    userVotedSongId: null,
     
     fetchSongs: async () => {
       set({ isLoading: true });
       
       try {
         console.log('Fetching songs...');
+        
+        // Get device ID to check user votes in a single request
+        const deviceId = localStorage.getItem('device_id');
+        
+        // Fetch songs data
         const { data: songsData, error: songsError } = await supabase
           .from('LeSongs')
           .select('*')
@@ -33,8 +40,7 @@ export const useSongStore = createBaseStore<SongState>(
           throw songsError;
         }
         
-        // Important: Always fetch votes data separately
-        // This is now allowed for anonymous users thanks to the new RLS policy
+        // Fetch all votes in a single request
         console.log('Fetching votes data...');
         const { data: votesData, error: votesError } = await supabase
           .from('song_votes')
@@ -45,6 +51,7 @@ export const useSongStore = createBaseStore<SongState>(
           throw votesError;
         }
         
+        // Process the songs with votes data
         const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
           songObj.votedBy = votesData
@@ -64,7 +71,20 @@ export const useSongStore = createBaseStore<SongState>(
           return songObj;
         });
         
-        set({ songs, isLoading: false });
+        // Check if current device has voted for any song
+        let userVotedSongId = null;
+        if (deviceId && votesData) {
+          const userVote = votesData.find(vote => vote.device_id === deviceId);
+          if (userVote) {
+            userVotedSongId = userVote.song_id.toString();
+          }
+        }
+        
+        set({ 
+          songs, 
+          userVotedSongId,
+          isLoading: false 
+        });
       } catch (error) {
         console.error('Error fetching songs:', error);
         toast.error('Failed to load songs');
