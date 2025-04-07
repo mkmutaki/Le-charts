@@ -1,11 +1,11 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
 import { v4 as uuidv4 } from 'uuid';
-import { useSongStore } from './useSongStore';
 
 interface VotingState extends BaseState {
-  upvoteSong: (songId: string) => Promise<boolean>;
+  upvoteSong: (songId: string) => Promise<void>;
   getUserVotedSong: () => Promise<string | null>;
   resetVotes: () => Promise<void>;
   removeVoteForSong: (songId: string) => Promise<void>;
@@ -29,13 +29,7 @@ export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
     getUserVotedSong: async () => {
       try {
-        // Instead of making a new request, use the cached value from songStore
-        const songStore = useSongStore.getState();
-        if (songStore.userVotedSongId !== undefined) {
-          return songStore.userVotedSongId;
-        }
-        
-        // Fallback to original implementation if needed
+        // Get device ID
         const deviceId = getDeviceId();
         
         if (!deviceId) {
@@ -73,19 +67,26 @@ export const useVotingStore = createBaseStore<VotingState>(
         
         if (!deviceId) {
           toast.error('Could not identify your device. Voting not possible.');
-          return false;
+          return;
         }
         
-        // Check cached vote first
-        const songStore = useSongStore.getState();
-        if (songStore.userVotedSongId !== null) {
-          if (songStore.userVotedSongId === songId) {
+        // Check if user already voted for ANY song
+        const { data: existingVotes, error: checkError } = await supabase
+          .from('song_votes')
+          .select('song_id')
+          .eq('device_id', deviceId);
+          
+        if (checkError) throw checkError;
+        
+        // User already voted for a song - votes are immutable
+        if (existingVotes && existingVotes.length > 0) {
+          const currentVotedSongId = existingVotes[0].song_id.toString();
+          if (currentVotedSongId === songId) {
             toast.info('You already liked this song');
-            return false;
           } else {
             toast.info('You can only vote for one song');
-            return false;
           }
+          return;
         }
         
         // Add the new vote
@@ -98,14 +99,10 @@ export const useVotingStore = createBaseStore<VotingState>(
             
         if (error) throw error;
         
-        // Update the cached vote in song store
-        songStore.fetchSongs();
         toast.success('Vote counted!');
-        return true;
       } catch (error) {
         console.error('Error voting for song:', error);
         toast.error('Failed to vote for song');
-        return false;
       }
     },
     
