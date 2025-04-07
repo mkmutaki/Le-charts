@@ -12,7 +12,6 @@ dist
 dist-ssr
 *.local
 supabase/config.toml
-src/integrations/supabase/client.ts
 
 # Editor directories and files
 .vscode/*
