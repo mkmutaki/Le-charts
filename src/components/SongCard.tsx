@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
@@ -11,17 +10,28 @@ interface SongCardProps {
 }
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
-  const { upvoteSong } = useVotingStore();
-  const { userVotedSongId } = useSongStore();
+  const { upvoteSong, getUserVotedSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
   
-  // Check if user has voted for this song based on cached data from parent
+  // Check if user has voted for this song
+  const checkUserVotes = async () => {
+    try {
+      const votedSongId = await getUserVotedSong();
+      const hasVotedForThisSong = votedSongId === song.id;
+      setHasVoted(hasVotedForThisSong);
+    } catch (error) {
+      console.error("Error checking user votes:", error);
+      setHasVoted(false);
+    }
+  };
+  
+  // Update when song changes or user changes
   useEffect(() => {
     setVoteCount(song.votes);
-    setHasVoted(userVotedSongId === song.id);
-  }, [song, userVotedSongId]);
+    checkUserVotes();
+  }, [song]);
   
   const handleVoteClick = async () => {
     if (isAnimating || hasVoted) return; // Prevent click if already voted or animating
@@ -29,15 +39,22 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     setIsAnimating(true);
     
     try {
-      // User is adding a vote
+      // User is adding a vote - immutable
       await upvoteSong(song.id);
       
-      // We'll assume the vote was successful if no error is thrown
-      // The actual state will be updated on the next fetch
-      setHasVoted(true);
-      setVoteCount(prev => prev + 1);
+      // Check if the vote was successful
+      const votedSongId = await getUserVotedSong();
+      const wasSuccessful = votedSongId === song.id;
+      
+      if (wasSuccessful) {
+        setHasVoted(true);
+        setVoteCount(prev => prev + 1);
+      }
     } catch (error) {
       console.error('Error voting:', error);
+      // Ensure UI state is correct by rechecking
+      await checkUserVotes();
+      setVoteCount(song.votes);
     } finally {
       setTimeout(() => {
         setIsAnimating(false);
