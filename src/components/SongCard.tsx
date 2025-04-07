@@ -26,16 +26,23 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   const handleVoteClick = async () => {
     if (isAnimating || hasVoted) return; // Prevent click if already voted or animating
     
+    // Check if user has already voted for another song
+    if (userVotedSongId !== null && userVotedSongId !== song.id) {
+      // Don't start the animation or update UI if already voted for another song
+      return;
+    }
+    
     setIsAnimating(true);
     
     try {
       // User is adding a vote
-      await upvoteSong(song.id);
+      const success = await upvoteSong(song.id);
       
-      // We'll assume the vote was successful if no error is thrown
-      // The actual state will be updated on the next fetch
-      setHasVoted(true);
-      setVoteCount(prev => prev + 1);
+      // Only update UI if the vote was actually successful
+      if (success) {
+        setHasVoted(true);
+        setVoteCount(prev => prev + 1);
+      }
     } catch (error) {
       console.error('Error voting:', error);
     } finally {

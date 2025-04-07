@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -6,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useSongStore } from './useSongStore';
 
 interface VotingState extends BaseState {
-  upvoteSong: (songId: string) => Promise<void>;
+  upvoteSong: (songId: string) => Promise<boolean>;
   getUserVotedSong: () => Promise<string | null>;
   resetVotes: () => Promise<void>;
   removeVoteForSong: (songId: string) => Promise<void>;
@@ -74,7 +73,7 @@ export const useVotingStore = createBaseStore<VotingState>(
         
         if (!deviceId) {
           toast.error('Could not identify your device. Voting not possible.');
-          return;
+          return false;
         }
         
         // Check cached vote first
@@ -82,10 +81,11 @@ export const useVotingStore = createBaseStore<VotingState>(
         if (songStore.userVotedSongId !== null) {
           if (songStore.userVotedSongId === songId) {
             toast.info('You already liked this song');
+            return false;
           } else {
             toast.info('You can only vote for one song');
+            return false;
           }
-          return;
         }
         
         // Add the new vote
@@ -101,9 +101,11 @@ export const useVotingStore = createBaseStore<VotingState>(
         // Update the cached vote in song store
         songStore.fetchSongs();
         toast.success('Vote counted!');
+        return true;
       } catch (error) {
         console.error('Error voting for song:', error);
         toast.error('Failed to vote for song');
+        return false;
       }
     },
     
