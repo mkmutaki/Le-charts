@@ -11,6 +11,7 @@ export const SupabaseListener = () => {
   const fetchSongs = useSongStore(state => state.fetchSongs);
   const initialCheckDone = useRef(false);
   const processingRef = useRef(false);
+  const fetchSongsRef = useRef(false);
 
   // Process user authentication
   const processUserAuth = async (user, eventType) => {
@@ -47,8 +48,11 @@ export const SupabaseListener = () => {
       setCurrentUser(newUserState);
       setSongStoreUser(newUserState);
       
-      // Fetch songs data after user state is updated
-      await fetchSongs();
+      // Only fetch songs if we haven't already or if user has changed
+      if (!isSameUser && !fetchSongsRef.current) {
+        fetchSongsRef.current = true;
+        await fetchSongs();
+      }
       
       // Only show sign-in toast for explicit SIGNED_IN events
       if (eventType === 'SIGNED_IN' && !isSameUser && !eventType.startsWith('INITIAL')) {
@@ -74,8 +78,10 @@ export const SupabaseListener = () => {
           setSongStoreUser(null);
           toast.info('Signed out');
           
-          // Fetch songs for anonymous users
+          // Reset fetch tracker and fetch songs once after signout
+          fetchSongsRef.current = false;
           setTimeout(async () => {
+            fetchSongsRef.current = true;
             await fetchSongs();
           }, 0);
           return;
@@ -92,9 +98,10 @@ export const SupabaseListener = () => {
           return;
         }
         
-        // For initial session with no session, still fetch songs
-        if (event === 'INITIAL_SESSION' || !initialCheckDone.current) {
+        // For initial session with no session, fetch songs only once
+        if ((event === 'INITIAL_SESSION' || !initialCheckDone.current) && !fetchSongsRef.current) {
           initialCheckDone.current = true;
+          fetchSongsRef.current = true;
           setTimeout(async () => {
             await fetchSongs();
           }, 0);
@@ -112,8 +119,11 @@ export const SupabaseListener = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // Even if no session, fetch songs for anonymous users
-          await fetchSongs();
+          // Fetch songs only once for anonymous users
+          if (!fetchSongsRef.current) {
+            fetchSongsRef.current = true;
+            await fetchSongs();
+          }
           return;
         }
         
@@ -126,8 +136,11 @@ export const SupabaseListener = () => {
         
       } catch (error) {
         console.error("Error in initial session check:", error);
-        // Even if there's an error, still fetch songs for anonymous users
-        await fetchSongs();
+        // Fetch songs only once even if there's an error
+        if (!fetchSongsRef.current) {
+          fetchSongsRef.current = true;
+          await fetchSongs();
+        }
       }
     };
 

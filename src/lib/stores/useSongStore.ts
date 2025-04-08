@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
@@ -7,6 +6,7 @@ import { createBaseStore, BaseState } from './useBaseStore';
 
 interface SongState extends BaseState {
   songs: Song[];
+  isLoading: boolean;
   fetchSongs: () => Promise<void>;
   addSong: (songData: SongFormData) => Promise<void>;
   updateSong: (songId: string, songData: SongFormData) => Promise<void>;
@@ -16,47 +16,45 @@ interface SongState extends BaseState {
 export const useSongStore = createBaseStore<SongState>(
   (set, get) => ({
     songs: [],
+    isLoading: false,
     
     fetchSongs: async () => {
+      // If songs are already loaded and not empty, skip fetching
+      if (get().songs.length > 0 && !get().isLoading) {
+        console.log('Songs already loaded, skipping fetch');
+        return;
+      }
+      
       set({ isLoading: true });
       
       try {
         console.log('Fetching songs...');
-        const { data: songsData, error: songsError } = await supabase
+        
+        // Fetch songs and votes in a single query using JOIN
+        // This reduces the number of requests to just one
+        const { data: songsWithVotes, error } = await supabase
           .from('LeSongs')
-          .select('*')
+          .select(`
+            *,
+            song_votes:song_votes(song_id, device_id)
+          `)
           .order('votes', { ascending: false })
           .order('updated_at', { ascending: false });
           
-        if (songsError) {
-          console.error('Error fetching songs:', songsError);
-          throw songsError;
+        if (error) {
+          console.error('Error fetching songs with votes:', error);
+          throw error;
         }
         
-        // Important: Always fetch votes data separately
-        // This is now allowed for anonymous users thanks to the new RLS policy
-        console.log('Fetching votes data...');
-        const { data: votesData, error: votesError } = await supabase
-          .from('song_votes')
-          .select('song_id, device_id');
+        const songs = songsWithVotes.map(songData => {
+          const song = songData;
+          const votes = songData.song_votes || [];
           
-        if (votesError) {
-          console.error('Error fetching votes:', votesError);
-          throw votesError;
-        }
-        
-        const songs = songsData.map(song => {
           const songObj = convertSupabaseSong(song);
-          songObj.votedBy = votesData
-            ? votesData
-                .filter(vote => vote.song_id === song.id)
-                .map(vote => vote.device_id)
-            : [];
+          songObj.votedBy = votes.map(vote => vote.device_id) || [];
           
-          // Use actual votes count from the votes data
-          const actualVotes = votesData
-            ? votesData.filter(vote => vote.song_id === song.id).length
-            : 0;
+          // Use actual votes count from the votes data 
+          const actualVotes = votes.length;
           
           // If votes in DB and actual votes differ, use the actual votes
           songObj.votes = actualVotes;

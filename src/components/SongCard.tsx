@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
-import { useSongStore, useVotingStore } from '@/lib/store';
+import { useVotingStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 interface SongCardProps {
@@ -15,9 +16,18 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
   
-  // Check if user has voted for this song
+  // Check if user has voted for this song - optimize to check local device_id first
   const checkUserVotes = async () => {
     try {
+      const deviceId = localStorage.getItem('device_id');
+      
+      // First check if this song has a vote from this device (faster local check)
+      if (deviceId && song.votedBy.includes(deviceId)) {
+        setHasVoted(true);
+        return;
+      }
+      
+      // Fall back to server check if local check doesn't find a vote
       const votedSongId = await getUserVotedSong();
       const hasVotedForThisSong = votedSongId === song.id;
       setHasVoted(hasVotedForThisSong);
@@ -40,13 +50,10 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     
     try {
       // User is adding a vote - immutable
-      await upvoteSong(song.id);
+      const success = await upvoteSong(song.id);
       
-      // Check if the vote was successful
-      const votedSongId = await getUserVotedSong();
-      const wasSuccessful = votedSongId === song.id;
-      
-      if (wasSuccessful) {
+      // Only update UI if vote was successful
+      if (success) {
         setHasVoted(true);
         setVoteCount(prev => prev + 1);
       }
