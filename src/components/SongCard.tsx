@@ -19,9 +19,9 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   // Check if user has voted for this song - using both local state and device_id
   useEffect(() => {
     const checkVoted = async () => {
-      // First check if this song has a vote from local state (faster)
-      const currentVotedSongId = votedSongId;
-      if (currentVotedSongId === song.id) {
+      // First check if this song has a vote from local store
+      const storeVotedSongId = useVotingStore.getState().votedSongId;
+      if (storeVotedSongId === song.id) {
         setHasVoted(true);
         return;
       }
@@ -40,7 +40,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
     
     checkVoted();
     setVoteCount(song.votes);
-  }, [song, votedSongId, getUserVotedSong]);
+  }, [song, getUserVotedSong]);
   
   const handleVoteClick = async () => {
     if (isAnimating || hasVoted) return; // Prevent click if already voted or animating
