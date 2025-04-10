@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
@@ -11,37 +10,35 @@ interface SongCardProps {
 }
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
-  const { upvoteSong, getUserVotedSong } = useVotingStore();
+  const { upvoteSong, getUserVotedSong, votedSongId } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
   
-  // Check if user has voted for this song - optimize to check local device_id first
-  const checkUserVotes = async () => {
-    try {
-      const deviceId = localStorage.getItem('device_id');
-      
-      // First check if this song has a vote from this device (faster local check)
-      if (deviceId && song.votedBy.includes(deviceId)) {
+  // Check if user has voted for this song - using both local state and device_id
+  useEffect(() => {
+    const checkVoted = async () => {
+      // First check if this song has a vote from local state (faster)
+      if (votedSongId === song.id) {
         setHasVoted(true);
         return;
       }
       
-      // Fall back to server check if local check doesn't find a vote
+      // Then check if the song has this device's ID in its votedBy array (faster local check)
+      const deviceId = localStorage.getItem('device_id');
+      if (deviceId && song.votedBy && song.votedBy.includes(deviceId)) {
+        setHasVoted(true);
+        return;
+      }
+      
+      // As a fallback, check with the server
       const votedSongId = await getUserVotedSong();
-      const hasVotedForThisSong = votedSongId === song.id;
-      setHasVoted(hasVotedForThisSong);
-    } catch (error) {
-      console.error("Error checking user votes:", error);
-      setHasVoted(false);
-    }
-  };
-  
-  // Update when song changes or user changes
-  useEffect(() => {
+      setHasVoted(votedSongId === song.id);
+    };
+    
+    checkVoted();
     setVoteCount(song.votes);
-    checkUserVotes();
-  }, [song]);
+  }, [song, votedSongId, getUserVotedSong]);
   
   const handleVoteClick = async () => {
     if (isAnimating || hasVoted) return; // Prevent click if already voted or animating
@@ -59,9 +56,6 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
       }
     } catch (error) {
       console.error('Error voting:', error);
-      // Ensure UI state is correct by rechecking
-      await checkUserVotes();
-      setVoteCount(song.votes);
     } finally {
       setTimeout(() => {
         setIsAnimating(false);

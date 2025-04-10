@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
@@ -8,6 +9,7 @@ interface VotingState extends BaseState {
   getUserVotedSong: () => Promise<string | null>;
   resetVotes: () => Promise<void>;
   removeVoteForSong: (songId: string) => Promise<void>;
+  votedSongId: string | null;
 }
 
 // Function to get or create a device ID
@@ -26,7 +28,14 @@ const getDeviceId = (): string => {
 
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
+    votedSongId: null,
+    
     getUserVotedSong: async () => {
+      // If we already have the votedSongId in state, return it
+      if (get().votedSongId !== null) {
+        return get().votedSongId;
+      }
+      
       try {
         // Get device ID
         const deviceId = getDeviceId();
@@ -45,11 +54,15 @@ export const useVotingStore = createBaseStore<VotingState>(
           
         if (error) throw error;
         
-        // If user has voted for a song, return its ID
+        // If user has voted for a song, return its ID and store in state
         if (data) {
-          return data.song_id.toString();
+          const songId = data.song_id.toString();
+          set({ votedSongId: songId });
+          return songId;
         }
         
+        // No vote found, update state
+        set({ votedSongId: null });
         return null;
       } catch (error) {
         console.error('Error getting user voted song:', error);
@@ -69,7 +82,18 @@ export const useVotingStore = createBaseStore<VotingState>(
           return false;
         }
         
-        // Check if user already voted for ANY song
+        // Check if user already voted for ANY song - first check local state
+        const currentVotedSong = get().votedSongId;
+        if (currentVotedSong) {
+          if (currentVotedSong === songId) {
+            toast.info('You already liked this song');
+          } else {
+            toast.info('You can only vote for one song');
+          }
+          return false;
+        }
+        
+        // If no local state, check database
         const { data: existingVotes, error: checkError } = await supabase
           .from('song_votes')
           .select('song_id')
@@ -80,6 +104,8 @@ export const useVotingStore = createBaseStore<VotingState>(
         // User already voted for a song - votes are immutable
         if (existingVotes && existingVotes.length > 0) {
           const currentVotedSongId = existingVotes[0].song_id.toString();
+          set({ votedSongId: currentVotedSongId });
+          
           if (currentVotedSongId === songId) {
             toast.info('You already liked this song');
           } else {
@@ -97,6 +123,9 @@ export const useVotingStore = createBaseStore<VotingState>(
           });
             
         if (error) throw error;
+        
+        // Update local state with the new vote
+        set({ votedSongId: songId });
         
         toast.success('Vote counted!');
         return true;
@@ -129,6 +158,11 @@ export const useVotingStore = createBaseStore<VotingState>(
           .eq('song_id', parseInt(songId));
           
         if (error) throw error;
+        
+        // If the removed song was the currently voted song, clear the state
+        if (get().votedSongId === songId) {
+          set({ votedSongId: null });
+        }
         
         toast.success('Votes removed for this song');
       } catch (error) {
@@ -167,6 +201,9 @@ export const useVotingStore = createBaseStore<VotingState>(
           .neq('id', 0); // This will match all rows
         
         if (updateError) throw updateError;
+        
+        // Reset voted song in state
+        set({ votedSongId: null });
         
         toast.success('All votes have been reset');
       } catch (error) {

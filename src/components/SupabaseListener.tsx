@@ -1,7 +1,7 @@
 
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthStore, useSongStore } from '@/lib/store';
+import { useAuthStore, useSongStore, useVotingStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
@@ -9,6 +9,7 @@ export const SupabaseListener = () => {
   const currentUser = useAuthStore(state => state.currentUser);
   const setSongStoreUser = useSongStore(state => state.setCurrentUser);
   const fetchSongs = useSongStore(state => state.fetchSongs);
+  const getUserVotedSong = useVotingStore(state => state.getUserVotedSong);
   const initialCheckDone = useRef(false);
   const processingRef = useRef(false);
   const fetchSongsRef = useRef(false);
@@ -48,6 +49,9 @@ export const SupabaseListener = () => {
       setCurrentUser(newUserState);
       setSongStoreUser(newUserState);
       
+      // Fetch user's voted song once (this helps prevent duplicate queries)
+      await getUserVotedSong();
+      
       // Only fetch songs if we haven't already or if user has changed
       if (!isSameUser && !fetchSongsRef.current) {
         fetchSongsRef.current = true;
@@ -67,49 +71,7 @@ export const SupabaseListener = () => {
   };
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state change event:", event);
-        
-        if (event === 'SIGNED_OUT') {
-          // Clear the user on sign out
-          setCurrentUser(null);
-          setSongStoreUser(null);
-          toast.info('Signed out');
-          
-          // Reset fetch tracker and fetch songs once after signout
-          fetchSongsRef.current = false;
-          setTimeout(async () => {
-            fetchSongsRef.current = true;
-            await fetchSongs();
-          }, 0);
-          return;
-        }
-        
-        // Handle cases with an active session
-        if (session) {
-          const user = session.user;
-          
-          // Use setTimeout to prevent blocking the auth state change handler
-          setTimeout(() => {
-            processUserAuth(user, event);
-          }, 0);
-          return;
-        }
-        
-        // For initial session with no session, fetch songs only once
-        if ((event === 'INITIAL_SESSION' || !initialCheckDone.current) && !fetchSongsRef.current) {
-          initialCheckDone.current = true;
-          fetchSongsRef.current = true;
-          setTimeout(async () => {
-            await fetchSongs();
-          }, 0);
-        }
-      }
-    );
-
-    // Check for existing session on mount
+    // Check for existing session on mount and ensure fetch happens only once
     const checkInitialSession = async () => {
       if (initialCheckDone.current) return;
       
@@ -119,7 +81,10 @@ export const SupabaseListener = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // Fetch songs only once for anonymous users
+          // For anonymous users, fetch voted song once
+          await getUserVotedSong();
+          
+          // Fetch songs only once
           if (!fetchSongsRef.current) {
             fetchSongsRef.current = true;
             await fetchSongs();
@@ -144,13 +109,48 @@ export const SupabaseListener = () => {
       }
     };
 
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state change event:", event);
+        
+        if (event === 'SIGNED_OUT') {
+          // Clear the user on sign out
+          setCurrentUser(null);
+          setSongStoreUser(null);
+          toast.info('Signed out');
+          
+          // Reset fetch tracker and fetch songs once after signout
+          fetchSongsRef.current = false;
+          setTimeout(async () => {
+            fetchSongsRef.current = true;
+            await fetchSongs();
+            // Also fetch voted song to ensure state is updated
+            await getUserVotedSong();
+          }, 0);
+          return;
+        }
+        
+        // Handle cases with an active session
+        if (session) {
+          const user = session.user;
+          
+          // Use setTimeout to prevent blocking the auth state change handler
+          setTimeout(() => {
+            processUserAuth(user, event);
+          }, 0);
+          return;
+        }
+      }
+    );
+
     // Execute the initial session check
     checkInitialSession();
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser, setSongStoreUser, fetchSongs]);
+  }, [setCurrentUser, setSongStoreUser, fetchSongs, getUserVotedSong]);
 
   return null;
 };

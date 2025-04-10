@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { useSongStore } from '@/lib/store';
+import { useSongStore, useVotingStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -9,10 +9,12 @@ import { toast } from 'sonner';
 
 const Index = () => {
   const { songs, fetchSongs, isLoading: storeLoading } = useSongStore();
+  const { getUserVotedSong } = useVotingStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const hasFetchedRef = useRef(false);
+  const hasCheckedVotesRef = useRef(false);
   
   // Songs are already sorted by votes and then by updated_at in the fetchSongs function
   const sortedSongs = songs;
@@ -29,6 +31,12 @@ const Index = () => {
       } else {
         // If we already have songs, just update loading state
         setIsLoading(false);
+      }
+      
+      // Check for user votes once
+      if (!hasCheckedVotesRef.current) {
+        hasCheckedVotesRef.current = true;
+        await getUserVotedSong();
       }
       
       // Set page as loaded after a short delay to allow for animation
@@ -48,7 +56,7 @@ const Index = () => {
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [fetchSongs, songs.length, storeLoading]);
+  }, [fetchSongs, getUserVotedSong, songs.length, storeLoading]);
   
   // Handle empty state add button - redirect to login since only admins can add songs
   const handleEmptyStateAddClick = () => {
