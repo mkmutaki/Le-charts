@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Heart, ExternalLink } from 'lucide-react';
 import { Song } from '@/lib/types';
@@ -19,7 +20,8 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   useEffect(() => {
     const checkVoted = async () => {
       // First check if this song has a vote from local state (faster)
-      if (votedSongId === song.id) {
+      const currentVotedSongId = votedSongId;
+      if (currentVotedSongId === song.id) {
         setHasVoted(true);
         return;
       }
