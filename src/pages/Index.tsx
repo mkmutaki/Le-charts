@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useSongStore, useVotingStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
@@ -15,6 +14,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const hasFetchedRef = useRef(false);
   const hasCheckedVotesRef = useRef(false);
+  const refreshIntervalRef = useRef<number | null>(null);
   
   // Songs are already sorted by votes and then by updated_at in the fetchSongs function
   const sortedSongs = songs;
@@ -47,6 +47,13 @@ const Index = () => {
     
     loadData();
     
+    // Set up regular refresh interval to keep vote counts in sync across devices
+    if (!refreshIntervalRef.current) {
+      refreshIntervalRef.current = window.setInterval(() => {
+        fetchSongs();
+      }, 30000); // Refresh every 30 seconds
+    }
+    
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 100);
     };
@@ -55,6 +62,10 @@ const Index = () => {
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
     };
   }, [fetchSongs, getUserVotedSong, songs.length, storeLoading]);
   
@@ -63,6 +74,12 @@ const Index = () => {
     toast.info("Only administrators can add songs. Please login if you are an admin.");
     // Option: navigate to login
     // window.location.href = '/login';
+  };
+  
+  // Manual refresh function
+  const handleRefresh = async () => {
+    await fetchSongs();
+    toast.success("Song data refreshed");
   };
   
   return (
@@ -80,10 +97,35 @@ const Index = () => {
                 Top 10 LeSongs
               </h2>
               <div className='flex flex-col md:flex-row justify-between text-muted-foreground mt-2 md:space-x-[407px]'>
-              <p className="text-start ml-1">Vote for your favorite</p>
-              <p className='text-sm'>*Songs updated weekly</p>
+                <p className="text-start ml-1">Vote for your favorite</p>
+                <p className='text-sm'>*Songs updated weekly</p>
               </div>
             </div>
+            
+            {/* Add refresh button */}
+            <button 
+              onClick={handleRefresh}
+              className="text-sm text-primary flex items-center gap-1 hover:underline"
+              aria-label="Refresh song data"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                <path d="M3 21v-5h5"/>
+              </svg>
+              Refresh
+            </button>
           </div>
           
           {/* Songs list */}

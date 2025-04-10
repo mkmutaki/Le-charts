@@ -19,12 +19,6 @@ export const useSongStore = createBaseStore<SongState>(
     isLoading: false,
     
     fetchSongs: async () => {
-      // If songs are already loaded and not empty, skip fetching
-      if (get().songs.length > 0 && !get().isLoading) {
-        console.log('Songs already loaded, skipping fetch');
-        return;
-      }
-      
       set({ isLoading: true });
       
       try {
@@ -53,11 +47,8 @@ export const useSongStore = createBaseStore<SongState>(
           const songObj = convertSupabaseSong(song);
           songObj.votedBy = votes.map(vote => vote.device_id) || [];
           
-          // Use actual votes count from the votes data 
-          const actualVotes = votes.length;
-          
-          // If votes in DB and actual votes differ, use the actual votes
-          songObj.votes = actualVotes;
+          // Always use the server's vote count to ensure consistency
+          songObj.votes = song.votes || 0;
           
           return songObj;
         });

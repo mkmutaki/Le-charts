@@ -11,7 +11,7 @@ interface SongCardProps {
 }
 
 export const SongCard = ({ song, rank }: SongCardProps) => {
-  const { upvoteSong, getUserVotedSong, votedSongId } = useVotingStore();
+  const { upvoteSong, getUserVotedSong } = useVotingStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
