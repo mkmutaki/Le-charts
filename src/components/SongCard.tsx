@@ -26,7 +26,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         return;
       }
       
-      // Check with the server for this specific device's vote
+      // Check with the server for this specific device's vote (only gets the ID)
       const votedSongId = await getUserVotedSong();
       setHasVoted(votedSongId === song.id);
     };

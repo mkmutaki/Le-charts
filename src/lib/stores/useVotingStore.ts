@@ -45,7 +45,8 @@ export const useVotingStore = createBaseStore<VotingState>(
           return null;
         }
         
-        // Check if user has already voted for a song - only fetch the song_id
+        // Check if user has already voted for a song - only fetch the song_id field
+        // Use maybeSingle() to get at most one record
         const { data, error } = await supabase
           .from('song_votes')
           .select('song_id')
