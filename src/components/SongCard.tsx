@@ -16,7 +16,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
   
-  // Check if user has voted for this song - using both local state and device_id
+  // Check if user has voted for this song
   useEffect(() => {
     const checkVoted = async () => {
       // First check if this song has a vote from local store
@@ -26,14 +26,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
         return;
       }
       
-      // Then check if the song has this device's ID in its votedBy array (faster local check)
-      const deviceId = localStorage.getItem('device_id');
-      if (deviceId && song.votedBy && song.votedBy.includes(deviceId)) {
-        setHasVoted(true);
-        return;
-      }
-      
-      // As a fallback, check with the server
+      // Check with the server for this specific device's vote
       const votedSongId = await getUserVotedSong();
       setHasVoted(votedSongId === song.id);
     };

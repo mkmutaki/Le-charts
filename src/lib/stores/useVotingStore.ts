@@ -45,7 +45,7 @@ export const useVotingStore = createBaseStore<VotingState>(
           return null;
         }
         
-        // Check if user has already voted for a song
+        // Check if user has already voted for a song - only fetch the song_id
         const { data, error } = await supabase
           .from('song_votes')
           .select('song_id')
@@ -93,17 +93,18 @@ export const useVotingStore = createBaseStore<VotingState>(
           return false;
         }
         
-        // If no local state, check database
+        // If no local state, check database - only fetch the song_id we need
         const { data: existingVotes, error: checkError } = await supabase
           .from('song_votes')
           .select('song_id')
-          .eq('device_id', deviceId);
+          .eq('device_id', deviceId)
+          .maybeSingle();
           
         if (checkError) throw checkError;
         
         // User already voted for a song - votes are immutable
-        if (existingVotes && existingVotes.length > 0) {
-          const currentVotedSongId = existingVotes[0].song_id.toString();
+        if (existingVotes) {
+          const currentVotedSongId = existingVotes.song_id.toString();
           set({ votedSongId: currentVotedSongId });
           
           if (currentVotedSongId === songId) {
