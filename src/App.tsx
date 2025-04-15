@@ -6,6 +6,8 @@ import Index from './pages/Index';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
 import { SupabaseListener } from './components/SupabaseListener';
+import RequestReset from './pages/Reset/RequestReset';
+import UpdatePassword from './pages/Reset/UpdatePassword';
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/reset/request" element={<RequestReset />} />
+        <Route path="/reset/update-password" element={<UpdatePassword />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />

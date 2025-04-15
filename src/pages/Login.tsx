@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, KeyRound } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -157,23 +157,36 @@ const Login = () => {
             </div>
           </div>
           
-          <button
-            type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground h-10 px-4 py-2 rounded-md text-sm font-medium shadow hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              <>
-                <LogIn className="h-4 w-4" />
-                <span>Sign in</span>
-              </>
-            )}
-          </button>
+          <div className="space-y-4">
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground h-10 px-4 py-2 rounded-md text-sm font-medium shadow hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-4 w-4" />
+                  <span>Sign in</span>
+                </>
+              )}
+            </button>
+            
+            <Link to="/reset/request">
+              <button
+                type="button"
+                className="w-full flex items-center justify-center gap-2 bg-secondary/80 text-secondary-foreground h-10 px-4 py-2 rounded-md text-sm font-medium hover:bg-secondary/70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
+                disabled={isLoading}
+              >
+                <KeyRound className="h-4 w-4" />
+                <span>Reset Password</span>
+              </button>
+            </Link>
+          </div>
         </form>
       </div>
     </div>
