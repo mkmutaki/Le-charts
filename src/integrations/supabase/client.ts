@@ -17,3 +17,8 @@ export const hasResetToken = () => {
   return window.location.hash.includes('type=recovery');
 };
 
+// Add a helper function to check for auth confirmation tokens
+export const hasAuthToken = () => {
+  return window.location.hash.includes('access_token=') || 
+         window.location.hash.includes('refresh_token=');
+};
