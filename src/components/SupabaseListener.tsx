@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, hasResetToken, hasAuthToken } from '@/integrations/supabase/client';
 import { useAuthStore, useSongStore, useVotingStore } from '@/lib/store';
 import { toast } from 'sonner';
 
@@ -78,6 +78,19 @@ export const SupabaseListener = () => {
       try {
         initialCheckDone.current = true;
         
+        // Check if we're in a password reset flow - if so, don't auto-sign in
+        if (hasResetToken() || hasAuthToken()) {
+          console.log("Auth token detected in URL, skipping initial session check");
+          
+          // Still fetch songs for the page
+          if (!fetchSongsRef.current) {
+            fetchSongsRef.current = true;
+            await fetchSongs();
+          }
+          
+          return;
+        }
+        
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
@@ -113,6 +126,12 @@ export const SupabaseListener = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state change event:", event);
+        
+        // Skip auth processing during password reset
+        if (hasResetToken() || hasAuthToken()) {
+          console.log("Auth token found, skipping auth state change processing");
+          return;
+        }
         
         if (event === 'SIGNED_OUT') {
           // Clear the user on sign out

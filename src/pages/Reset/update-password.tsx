@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Key, Lock, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, hasResetToken } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -90,50 +90,39 @@ const UpdatePassword = () => {
         // 1) Verify the one-time passcode (the token)
         //    Provide either `email` or `phone` depending on how your user received the reset link.
         const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-          // email: userEmail,
+          email: userEmail,
           token_hash: tokenHash,
-          type: 'recovery', // e.g. the email address used for resetting
+          type: 'recovery',
         });
+        
         if (verifyError) {
           console.error('OTP verification error:', verifyError);
           toast.error(verifyError.message);
           return;
         }
 
-        // After successful verifyOtp (or getSessionFromUrl)
-const { data: userData, error: userError } = await supabase.auth.getUser();
-if (userError || !userData?.user?.email) {
-  toast.error('Could not retrieve user information');
-  return;
-}
+        console.log('OTP verified successfully:', verifyData);
 
-const { data: { session } } = await supabase.auth.getSession();
-const user = session.user;
-
-if (user.email !== userEmail) {
-  toast.error('The email you entered does not match the email used for password reset');
-  return;
-}
-
-        // 2) After OTP verification, update the user’s password
+        // 2) After OTP verification, update the user's password
         const { data: updateData, error: updateError } = await supabase.auth.updateUser({
           password: password,
         });
+        
         if (updateError) {
           console.error('Password update error:', updateError);
           toast.error(updateError.message);
           return;
         }
 
-        // **Immediately sign out** so no session remains
-        await supabase.auth.signOut()
-       
-        // if()
         console.log('Password updated successfully:', updateData);
+        
+        // 3) **Immediately sign out** so no session remains
+        await supabase.auth.signOut();
+       
         toast.success('Password updated successfully');
         setIsSuccess(true);
     
-        // Optionally redirect to login after a delay
+        // Redirect to login after a delay
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -144,8 +133,7 @@ if (user.email !== userEmail) {
       } finally {
         setIsLoading(false);
       }
-    }
-     else {
+    } else {
       // If the user is already authenticated, update their password normally.
       try {
         setIsLoading(true);
@@ -160,6 +148,10 @@ if (user.email !== userEmail) {
         console.log("Password updated successfully:", data);
         setIsSuccess(true);
         toast.success('Password updated successfully');
+        
+        // Sign the user out to prevent auto-login
+        await supabase.auth.signOut();
+        
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -187,10 +179,11 @@ if (user.email !== userEmail) {
   }
 
   // If a user is logged in but not in a reset context, or there's no valid flow, redirect appropriately.
-  if (currentUser && !hasResetFlow) {
+  if (currentUser && !hasResetFlow && !hasResetToken()) {
     return <Navigate to="/" replace />;
   }
-  if (!hasResetFlow) {
+  
+  if (!hasResetFlow && !hasResetToken()) {
     return <Navigate to="/reset/request" replace />;
   }
 
@@ -202,16 +195,16 @@ if (user.email !== userEmail) {
           <p className="text-muted-foreground mt-2">Enter your new password below</p>
         </div>
         <div className="space-y-2">
-  <Label htmlFor="email">Email Address</Label>
-  <Input
-    id="email"
-    type="email"
-    value={userEmail}
-    onChange={(e) => setUserEmail(e.target.value)}
-    placeholder="your@email.com"
-    disabled={isLoading}
-  />
-</div>
+          <Label htmlFor="email">Email Address</Label>
+          <Input
+            id="email"
+            type="email"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+            placeholder="your@email.com"
+            disabled={isLoading}
+          />
+        </div>
         
         {isSuccess ? (
           <Alert>
