@@ -116,9 +116,9 @@ const Index = () => {
               <h2 className=" text-3xl md:text-4xl font-bold mb-5">
                 Top 10 LeSongs
               </h2>
-              <div className='flex flex-col md:flex-row justify-between text-muted-foreground mt-2 md:space-x-[407px]'>
+              <div className='flex flex-col md:flex-row justify-between text-muted-foreground mt-2 md:space-x-[307px]'>
                 <p className="text-start ml-1">Vote for your favorite</p>
-                <p className='text-sm'>*Songs updated weekly</p>
+                <p className='text-sm pt-[2.5px]'>*Songs updated weekly</p>
               </div>
             </div>
             
