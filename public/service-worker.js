@@ -1,5 +1,5 @@
 // Service Worker for Le-Charts
-const CACHE_NAME = 'le-charts-v1';
+const CACHE_NAME = 'le-charts-v2';
 const RUNTIME_CACHE = 'le-charts-runtime';
 
 // Assets to cache on install
@@ -70,11 +70,25 @@ function createCacheKey(request) {
 
 // Fetch event - apply caching strategy
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
+  const { request } = event;
+  let url;
+
+  try {
+    url = new URL(request.url);
+  } catch (e) {
+    // Malformed URL? just ignore it.
     return;
+  }
+
+  // 1) Only handle GET
+  // 2) Only handle http: or https:
+  // 3) Only handle requests to _your_ origin (skip extensions, analytics, etc.)
+  if (
+    request.method !== 'GET' ||
+    (url.protocol !== 'http:' && url.protocol !== 'https:') ||
+    url.origin !== self.location.origin
+  ) {
+    return; 
   }
   
   // Special handling for Supabase API requests
