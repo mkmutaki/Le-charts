@@ -24,8 +24,6 @@ export const SupabaseListener = () => {
     processingRef.current = true;
     
     try {
-      console.log(`Processing auth state change (${eventType}) for user:`, user.id);
-      
       // Check if this is the same user that's already authenticated
       const isSameUser = currentUser && currentUser.id === user.id;
       
@@ -125,8 +123,6 @@ export const SupabaseListener = () => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state change event:", event);
-        
         // Skip auth processing during password reset
         if (hasResetToken() || hasAuthToken()) {
           console.log("Auth token found, skipping auth state change processing");
