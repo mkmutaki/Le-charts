@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { Key, Lock, Check } from 'lucide-react';
-import { supabase, hasResetToken } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,20 +20,17 @@ const UpdatePassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userEmail, setUserEmail] = useState('');
-  const [tokenHash, setTokenHash] = useState('');
-  const [isTokenValid, setIsTokenValid] = useState(false);
 
-  // Check for recovery token in URL and extract it
+  // Instead of relying on supabase.auth.getSession, check the URL for a recovery token.
   useEffect(() => {
     const checkSessionOrRecovery = async () => {
       const searchParams = new URLSearchParams(location.search);
-      const tokenFromURL = searchParams.get('token_hash');
-      const isRecoveryFlow = searchParams.get('type') === 'recovery' && !!tokenFromURL;
+      const tokenHash = searchParams.get('token_hash');
+      const isRecoveryFlow = searchParams.get('type') === 'recovery' && !!tokenHash;
 
-      // If it's a recovery flow, accept it and bypass session check
+      // If it's a recovery flow, accept it and bypass session check.
       if (isRecoveryFlow) {
         setHasResetFlow(true);
-        setTokenHash(tokenFromURL || '');
         setIsCheckingSession(false);
         return;
       }
@@ -64,43 +60,6 @@ const UpdatePassword = () => {
     checkSessionOrRecovery();
   }, [location]);
 
-  // This function validates the token without needing to provide an email
-  const validateToken = async () => {
-    if (!tokenHash || !userEmail) return false;
-    
-    try {
-      // Try to get user information from the token
-      const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: tokenHash,
-        type: 'recovery',
-      });
-      
-      if (error) {
-        console.error('Token validation error:', error);
-        toast.error('Invalid or expired token');
-        return false;
-      }
-      
-      // The token is valid, now check if the email matches
-      const session = data?.session;
-      const tokenEmail = session?.user?.email;
-      
-      if (tokenEmail && tokenEmail.toLowerCase() === userEmail.toLowerCase()) {
-        console.log('Email verified successfully');
-        setIsTokenValid(true);
-        return true;
-      } else {
-        console.error('Email mismatch:', { tokenEmail, userEmail });
-        toast.error('The email you entered does not match the recovery request');
-        return false;
-      }
-    } catch (error) {
-      console.error('Token validation error:', error);
-      toast.error('Error validating recovery token');
-      return false;
-    }
-  };
-
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -116,52 +75,65 @@ const UpdatePassword = () => {
       toast.error('Password must be at least 6 characters long');
       return;
     }
-    
-    if (!userEmail) {
-      toast.error('Please enter your email address');
-      return;
-    }
-
-    setIsLoading(true);
 
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('type') === 'recovery') {
+      const tokenHash = searchParams.get('token_hash');
       if (!tokenHash) {
         toast.error('Missing token for password reset');
-        setIsLoading(false);
         return;
       }
       
       try {
-        // First validate the token and email match
-        const isValid = await validateToken();
-        
-        if (!isValid) {
-          setIsLoading(false);
-          return;
-        }
-        
-        // 2) After token validation, update the user's password
-        const { data: updateData, error: updateError } = await supabase.auth.updateUser({
-          password: password,
+        setIsLoading(true);
+    
+        // 1) Verify the one-time passcode (the token)
+        //    Provide either `email` or `phone` depending on how your user received the reset link.
+        const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+          // email: userEmail,
+          token_hash: tokenHash,
+          type: 'recovery', // e.g. the email address used for resetting
         });
-        
-        if (updateError) {
-          console.error('Password update error:', updateError);
-          toast.error(updateError.message);
-          setIsLoading(false);
+        if (verifyError) {
+          console.error('OTP verification error:', verifyError);
+          toast.error(verifyError.message);
           return;
         }
 
-        console.log('Password updated successfully:', updateData);
-        
-        // 3) **Immediately sign out** so no session remains
-        await supabase.auth.signOut();
+        // After successful verifyOtp (or getSessionFromUrl)
+const { data: userData, error: userError } = await supabase.auth.getUser();
+if (userError || !userData?.user?.email) {
+  toast.error('Could not retrieve user information');
+  return;
+}
+
+const { data: { session } } = await supabase.auth.getSession();
+const user = session.user;
+
+if (user.email !== userEmail) {
+  toast.error('The email you entered does not match the email used for password reset');
+  return;
+}
+
+        // 2) After OTP verification, update the user’s password
+        const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
+        if (updateError) {
+          console.error('Password update error:', updateError);
+          toast.error(updateError.message);
+          return;
+        }
+
+        // **Immediately sign out** so no session remains
+        await supabase.auth.signOut()
        
+        // if()
+        console.log('Password updated successfully:', updateData);
         toast.success('Password updated successfully');
         setIsSuccess(true);
     
-        // Redirect to login after a delay
+        // Optionally redirect to login after a delay
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -172,8 +144,9 @@ const UpdatePassword = () => {
       } finally {
         setIsLoading(false);
       }
-    } else {
-      // If the user is already authenticated, update their password normally
+    }
+     else {
+      // If the user is already authenticated, update their password normally.
       try {
         setIsLoading(true);
         const { data, error } = await supabase.auth.updateUser({
@@ -187,10 +160,6 @@ const UpdatePassword = () => {
         console.log("Password updated successfully:", data);
         setIsSuccess(true);
         toast.success('Password updated successfully');
-        
-        // Sign the user out to prevent auto-login
-        await supabase.auth.signOut();
-        
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -203,7 +172,7 @@ const UpdatePassword = () => {
     }
   };
 
-  // While checking the session or reset flow, show a loading state
+  // While checking the session or reset flow, show a loading state.
   if (isCheckingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/10 px-4">
@@ -217,12 +186,11 @@ const UpdatePassword = () => {
     );
   }
 
-  // If a user is logged in but not in a reset context, or there's no valid flow, redirect appropriately
-  if (currentUser && !hasResetFlow && !hasResetToken()) {
+  // If a user is logged in but not in a reset context, or there's no valid flow, redirect appropriately.
+  if (currentUser && !hasResetFlow) {
     return <Navigate to="/" replace />;
   }
-  
-  if (!hasResetFlow && !hasResetToken()) {
+  if (!hasResetFlow) {
     return <Navigate to="/reset/request" replace />;
   }
 
@@ -233,6 +201,17 @@ const UpdatePassword = () => {
           <h1 className="text-2xl font-bold">Update Your Password</h1>
           <p className="text-muted-foreground mt-2">Enter your new password below</p>
         </div>
+        <div className="space-y-2">
+  <Label htmlFor="email">Email Address</Label>
+  <Input
+    id="email"
+    type="email"
+    value={userEmail}
+    onChange={(e) => setUserEmail(e.target.value)}
+    placeholder="your@email.com"
+    disabled={isLoading}
+  />
+</div>
         
         {isSuccess ? (
           <Alert>
@@ -248,22 +227,6 @@ const UpdatePassword = () => {
           <form onSubmit={handleUpdatePassword} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  disabled={isLoading}
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  Enter the email address associated with this password reset request
-                </p>
-              </div>
-              
-              <div className="space-y-2">
                 <Label htmlFor="password">New Password</Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
@@ -277,8 +240,6 @@ const UpdatePassword = () => {
                     placeholder="••••••••"
                     className="pl-10"
                     disabled={isLoading}
-                    required
-                    minLength={6}
                   />
                 </div>
               </div>
@@ -296,7 +257,6 @@ const UpdatePassword = () => {
                     placeholder="••••••••"
                     className="pl-10"
                     disabled={isLoading}
-                    required
                   />
                 </div>
               </div>

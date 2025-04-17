@@ -7,6 +7,7 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import { SupabaseListener } from './components/SupabaseListener';
 import RequestReset from './pages/Reset/RequestReset';
+import UpdatePassword from './pages/Reset/update-password';
 import AuthConfirm from './pages/Auth/Confirm';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset/request" element={<RequestReset />} />
+        <Route path="/reset/update-password" element={<UpdatePassword />} />
         <Route path="/auth/confirm" element={<AuthConfirm />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
