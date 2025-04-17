@@ -1,7 +1,5 @@
-
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const AuthConfirm = () => {
@@ -11,34 +9,35 @@ const AuthConfirm = () => {
   useEffect(() => {
     const handleConfirmation = async () => {
       try {
-        // Get the hash fragment from the URL
-        const hashFragment = location.hash;
+        // Parse query parameters from the search string.
+        const searchParams = new URLSearchParams(location.search);
+        // Extract the token_hash parameter.
+        const tokenHash = searchParams.get('token_hash');
         
-        console.log("Processing confirmation with hash:", hashFragment);
-        
-        if (!hashFragment || !hashFragment.includes('type=')) {
-          console.error("Invalid or missing hash parameters");
-          toast.error('Invalid confirmation link');
+        if (!tokenHash) {
+          console.error("Missing token_hash in query parameters");
+          toast.error("Invalid confirmation link");
           setIsProcessing(false);
           return;
         }
         
-        // Check if this is a recovery (password reset) flow
-        if (hashFragment.includes('type=recovery')) {
+        console.log("Extracted token hash:", tokenHash);
+
+        // Check if this is a recovery (password reset) flow.
+        if (searchParams.get('type') === 'recovery') {
           console.log("Recovery flow detected, redirecting to password update page");
-          // Let the update-password page handle the actual password reset
-          window.location.href = '/reset/update-password' + hashFragment;
+          // Redirect the user to the update password page,
+          // appending the token_hash and type as query parameters.
+          window.location.href = `/reset/update-password?token_hash=${tokenHash}&type=recovery`;
           return;
         }
         
-        // For other auth flows, process here
-        // For example, email confirmation
+        // Handle other authentication flows as needed.
+        // When done, you can set isProcessing to false to trigger any fallback or redirect.
         setIsProcessing(false);
-        toast.info('Confirmation processed');
-        
       } catch (error) {
-        console.error("Confirmation processing error:", error);
-        toast.error('Error processing confirmation');
+        console.error("Error processing confirmation:", error);
+        toast.error("Error processing confirmation");
         setIsProcessing(false);
       }
     };
@@ -46,6 +45,8 @@ const AuthConfirm = () => {
     handleConfirmation();
   }, [location]);
 
+  // If processing is complete (but no redirect occurred),
+  // navigate the user to the home page as a fallback.
   if (!isProcessing) {
     return <Navigate to="/" replace />;
   }
