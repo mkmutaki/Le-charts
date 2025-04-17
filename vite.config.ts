@@ -22,8 +22,9 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     minify: 'terser',
-    sourcemap: false,
+    sourcemap: mode === 'development',
     cssMinify: true,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -31,10 +32,24 @@ export default defineConfig(({ mode }) => ({
           ui: [
             '@radix-ui/react-dialog',
             '@radix-ui/react-label',
+            '@radix-ui/react-toast',
             'lucide-react'
+          ],
+          state: [
+            'zustand',
+            '@tanstack/react-query'
           ]
         }
       }
+    },
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production',
+        drop_debugger: mode === 'production'
+      }
     }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'zustand']
   }
 }));
