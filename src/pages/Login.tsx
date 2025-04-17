@@ -175,17 +175,6 @@ const Login = () => {
                 </>
               )}
             </button>
-            
-            <Link to="/reset/request">
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-2 bg-secondary/80 text-secondary-foreground h-10 px-4 py-2 rounded-md text-sm font-medium hover:bg-secondary/70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
-                disabled={isLoading}
-              >
-                <KeyRound className="h-4 w-4" />
-                <span>Reset Password</span>
-              </button>
-            </Link>
           </div>
         </form>
       </div>
