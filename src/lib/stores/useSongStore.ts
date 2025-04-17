@@ -1,8 +1,10 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
 import { convertSupabaseSong } from '../supabase-types';
 import { createBaseStore, BaseState } from './useBaseStore';
+import { clearSongsCache } from '../serviceWorker';
 
 interface SongState extends BaseState {
   songs: Song[];
@@ -102,6 +104,9 @@ export const useSongStore = createBaseStore<SongState>(
             songs: [...state.songs, newSong] 
           }));
           
+          // Clear the service worker cache for songs
+          clearSongsCache();
+          
           toast.success('Song added to the chart!');
           return;
         }
@@ -155,6 +160,9 @@ export const useSongStore = createBaseStore<SongState>(
           )
         }));
         
+        // Clear the service worker cache for songs
+        clearSongsCache();
+        
         toast.success('Song updated successfully');
       } catch (error) {
         console.error('Error updating song:', error);
@@ -191,6 +199,9 @@ export const useSongStore = createBaseStore<SongState>(
         set((state) => ({
           songs: state.songs.filter(song => song.id !== songId)
         }));
+        
+        // Clear the service worker cache for songs
+        clearSongsCache();
         
         toast.success('Song deleted');
       } catch (error) {

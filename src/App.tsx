@@ -1,9 +1,10 @@
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { SupabaseListener } from './components/SupabaseListener';
 import ErrorBoundary from './components/ErrorBoundary';
+import { toast } from 'sonner';
 
 // Lazy load components
 const Index = lazy(() => import('./pages/Index'));
@@ -21,6 +22,49 @@ const LoadingFallback = () => (
 );
 
 function App() {
+  // Online/offline detection
+  useEffect(() => {
+    // Handle offline status
+    const handleOffline = () => {
+      const offlineNotification = document.getElementById('offline-notification');
+      if (offlineNotification) {
+        offlineNotification.style.display = 'block';
+        setTimeout(() => {
+          offlineNotification.style.transform = 'translateY(0)';
+          offlineNotification.style.opacity = '1';
+        }, 100);
+      }
+      toast.error('You are offline', {
+        description: 'Some features may not work properly until connection is restored',
+        duration: 5000,
+      });
+    };
+
+    // Handle online status
+    const handleOnline = () => {
+      const offlineNotification = document.getElementById('offline-notification');
+      if (offlineNotification) {
+        offlineNotification.style.transform = 'translateY(20px)';
+        offlineNotification.style.opacity = '0';
+        setTimeout(() => {
+          offlineNotification.style.display = 'none';
+        }, 300);
+      }
+      toast.success('You are back online', {
+        description: 'All features are now available',
+        duration: 3000,
+      });
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <ErrorBoundary>
