@@ -1,10 +1,13 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, SongFormData } from '../types';
 import { convertSupabaseSong } from '../supabase-types';
 import { createBaseStore, BaseState } from './useBaseStore';
 import { clearSongsCache } from '../serviceWorker';
+
+// Track fetch timestamps to prevent duplicate requests
+const lastFetchTimestamp = { current: 0 };
+const MIN_FETCH_INTERVAL = 5000; // 5 seconds
 
 interface SongState extends BaseState {
   songs: Song[];
@@ -21,6 +24,14 @@ export const useSongStore = createBaseStore<SongState>(
     isLoading: false,
     
     fetchSongs: async () => {
+      // Add timestamp-based deduplication
+      const now = Date.now();
+      if (now - lastFetchTimestamp.current < MIN_FETCH_INTERVAL) {
+        console.log('Skipping fetchSongs - too soon since last fetch');
+        return;
+      }
+      lastFetchTimestamp.current = now;
+      
       set({ isLoading: true });
       
       try {
@@ -107,6 +118,9 @@ export const useSongStore = createBaseStore<SongState>(
           // Clear the service worker cache for songs
           clearSongsCache();
           
+          // Reset the fetch timestamp to allow an immediate fetch after adding a song
+          lastFetchTimestamp.current = 0;
+          
           toast.success('Song added to the chart!');
           return;
         }
@@ -163,6 +177,9 @@ export const useSongStore = createBaseStore<SongState>(
         // Clear the service worker cache for songs
         clearSongsCache();
         
+        // Reset the fetch timestamp to allow an immediate fetch after updating a song
+        lastFetchTimestamp.current = 0;
+        
         toast.success('Song updated successfully');
       } catch (error) {
         console.error('Error updating song:', error);
@@ -202,6 +219,9 @@ export const useSongStore = createBaseStore<SongState>(
         
         // Clear the service worker cache for songs
         clearSongsCache();
+        
+        // Reset the fetch timestamp to allow an immediate fetch after deleting a song
+        lastFetchTimestamp.current = 0;
         
         toast.success('Song deleted');
       } catch (error) {
