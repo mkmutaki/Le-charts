@@ -1,8 +1,13 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
 import { v4 as uuidv4 } from 'uuid';
+
+// Track fetch timestamps to prevent duplicate requests
+const lastFetchTimestamps = {
+  votes: 0
+};
+const MIN_FETCH_INTERVAL = 120000; // 120 seconds (2 minutes)
 
 interface VotingState extends BaseState {
   upvoteSong: (songId: string) => Promise<boolean>;
@@ -35,6 +40,14 @@ export const useVotingStore = createBaseStore<VotingState>(
       if (get().votedSongId !== null) {
         return get().votedSongId;
       }
+      
+      // Check if we need to throttle this request
+      const now = Date.now();
+      if (now - lastFetchTimestamps.votes < MIN_FETCH_INTERVAL) {
+        console.log('Skipping getUserVotedSong - too soon since last fetch');
+        return get().votedSongId;
+      }
+      lastFetchTimestamps.votes = now;
       
       try {
         // Get device ID

@@ -7,7 +7,7 @@ import { clearSongsCache } from '../serviceWorker';
 
 // Track fetch timestamps to prevent duplicate requests
 const lastFetchTimestamp = { current: 0 };
-const MIN_FETCH_INTERVAL = 5000; // 5 seconds
+const MIN_FETCH_INTERVAL = 120000; // 120 seconds (2 minutes)
 
 interface SongState extends BaseState {
   songs: Song[];

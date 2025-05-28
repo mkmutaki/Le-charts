@@ -11,7 +11,7 @@ const PRECACHE_ASSETS = [
 ];
 
 // Cache specific Supabase API paths
-const SUPABASE_API_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const SUPABASE_API_CACHE_DURATION = 120 * 60 * 1000; // 120 minutes (2 hours) in milliseconds
 const SONGS_QUERY_URL = '/rest/v1/LeSongs';
 
 // Install event - precache static assets

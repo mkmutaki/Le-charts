@@ -19,8 +19,8 @@ export const SupabaseListener = () => {
     votes: 0
   });
   
-  // Minimum interval between repeated requests (5 seconds)
-  const MIN_REQUEST_INTERVAL = 5000;
+  // Minimum interval between repeated requests (120 seconds / 2 minutes)
+  const MIN_REQUEST_INTERVAL = 120000;
 
   // Process user authentication
   const processUserAuth = async (user, eventType) => {
