@@ -1,4 +1,3 @@
-
 export interface Song {
   id: string;
   title: string;
@@ -21,4 +20,12 @@ export interface User {
   id: string;
   isAdmin: boolean;
   likedSongs?: string[]; // Add this property to the User interface
+}
+
+export interface TilePuzzleState {
+  tiles: number[];
+  emptyTileIndex: number;
+  moveCount: number;
+  isWon: boolean;
+  isShuffling: boolean;
 }
