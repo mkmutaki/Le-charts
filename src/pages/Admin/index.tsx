@@ -5,6 +5,7 @@ import { useSongStore, useAuthStore } from '@/lib/store';
 import { AddSongModal } from '@/components/AddSongModal';
 import { EditSongModal } from '@/components/EditSongModal';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
+import { AlbumCoverUploadModal } from '@/components/AlbumCoverUploadModal';
 import { AdminNavBar } from './AdminNavBar';
 import { AdminSongList } from './AdminSongList';
 import { AdminLoader } from './AdminLoader';
@@ -19,6 +20,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const [isAlbumCoverUploadOpen, setIsAlbumCoverUploadOpen] = useState(false);
   
   const {
     isAddSongOpen,
@@ -88,6 +90,7 @@ const Admin = () => {
         onAddSongClick={() => setIsAddSongOpen(true)}
         onResetPasswordClick={() => setIsResetPasswordOpen(true)}
         onResetVotesClick={handleResetVotes}
+        onUploadAlbumCoverClick={() => setIsAlbumCoverUploadOpen(true)}
       />
       
       <main className="max-w-6xl mx-auto px-4 py-8">
@@ -116,6 +119,11 @@ const Admin = () => {
       <ResetPasswordModal
         isOpen={isResetPasswordOpen}
         onClose={() => setIsResetPasswordOpen(false)}
+      />
+
+      <AlbumCoverUploadModal
+        isOpen={isAlbumCoverUploadOpen}
+        onClose={() => setIsAlbumCoverUploadOpen(false)}
       />
     </div>
   );

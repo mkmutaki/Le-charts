@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,12 +6,12 @@ import { cn } from '@/lib/utils';
 import {
   TILE_COUNT,
   EMPTY_TILE_VALUE,
-  IMAGE_URL,
   isAdjacent,
   isWon,
   getBackgroundPosition,
   shuffleTiles,
 } from '@/lib/utils';
+import { usePuzzleSettings } from '@/hooks/usePuzzleSettings';
 import type { TilePuzzleState } from '@/lib/types';
 
 interface TilePuzzleProps {
@@ -18,6 +19,7 @@ interface TilePuzzleProps {
 }
 
 const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
+  const { settings, loading } = usePuzzleSettings();
   const [gameState, setGameState] = useState<TilePuzzleState>({
     tiles: Array.from({ length: TILE_COUNT }, (_, i) => i),
     emptyTileIndex: EMPTY_TILE_VALUE,
@@ -76,12 +78,24 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
     }));
   }, [gameState.tiles, gameState.emptyTileIndex]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#121213] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const imageUrl = settings?.current_album_cover_url;
+  const albumTitle = settings?.album_title || 'Unknown Album';
+  const albumArtist = settings?.album_artist || 'Unknown Artist';
+
   return (
     <div className="min-h-screen bg-[#121213] flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Sliding Tile Puzzle</CardTitle>
-          <p className="text-sm text-muted-foreground">Reassemble the Graduation album cover!</p>
+          <p className="text-sm text-muted-foreground">Reassemble the {albumTitle} album cover!</p>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -103,7 +117,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
                   style={{
                     top: `${top}px`,
                     left: `${left}px`,
-                    backgroundImage: isEmpty ? 'none' : `url('${IMAGE_URL}')`,
+                    backgroundImage: isEmpty ? 'none' : `url('${imageUrl}')`,
                     backgroundSize: '300px 300px',
                     backgroundPosition: isEmpty ? 'center' : getBackgroundPosition(tileValue),
                   }}
@@ -140,7 +154,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
           )}
           
           <p className="text-xs text-muted-foreground text-center">
-            Album Cover: Kanye West - Graduation
+            Album Cover: {albumArtist} - {albumTitle}
           </p>
         </CardContent>
       </Card>

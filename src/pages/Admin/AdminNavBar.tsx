@@ -1,18 +1,19 @@
 
+import { Plus, RotateCcw, ArrowLeft, Key, ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, RotateCcw, Plus, Key } from 'lucide-react';
-import { useSongStore, useVotingStore } from '@/lib/store';
 
 interface AdminNavBarProps {
   onAddSongClick: () => void;
   onResetPasswordClick: () => void;
   onResetVotesClick: () => void;
+  onUploadAlbumCoverClick: () => void;
 }
 
 export const AdminNavBar = ({ 
   onAddSongClick, 
-  onResetPasswordClick,
-  onResetVotesClick 
+  onResetPasswordClick, 
+  onResetVotesClick,
+  onUploadAlbumCoverClick
 }: AdminNavBarProps) => {
   return (
     <header className="bg-card shadow-sm border-b">
@@ -29,6 +30,14 @@ export const AdminNavBar = ({
         </div>
         
         <div className="flex items-center gap-3">
+          <button
+            onClick={onUploadAlbumCoverClick}
+            className="flex items-center gap-1.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-purple-200 dark:hover:bg-purple-800"
+          >
+            <ImageIcon className="h-4 w-4" />
+            <span>Upload Album Cover</span>
+          </button>
+          
           <button
             onClick={onResetPasswordClick}
             className="flex items-center gap-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-blue-200 dark:hover:bg-blue-800"

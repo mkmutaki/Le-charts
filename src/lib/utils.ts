@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -9,9 +10,6 @@ export function cn(...inputs: ClassValue[]) {
 export const GRID_SIZE = 3;
 export const TILE_COUNT = GRID_SIZE * GRID_SIZE;
 export const EMPTY_TILE_VALUE = TILE_COUNT - 1;
-
-export const IMAGE_URL =
-  "https://upload.wikimedia.org/wikipedia/en/7/70/Graduation_%28album%29.jpg";
 
 export const getPosition = (index: number) => ({
   row: Math.floor(index / GRID_SIZE),

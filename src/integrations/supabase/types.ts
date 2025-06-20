@@ -42,6 +42,33 @@ export type Database = {
         }
         Relationships: []
       }
+      puzzle_settings: {
+        Row: {
+          album_artist: string | null
+          album_title: string | null
+          created_at: string
+          current_album_cover_url: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          album_artist?: string | null
+          album_title?: string | null
+          created_at?: string
+          current_album_cover_url: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          album_artist?: string | null
+          album_title?: string | null
+          created_at?: string
+          current_album_cover_url?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       song_votes: {
         Row: {
           device_id: string
@@ -116,7 +143,7 @@ export type Database = {
         }[]
       }
       is_admin: {
-        Args: { user_id: string } | { id: string }
+        Args: { id: string } | { user_id: string }
         Returns: boolean
       }
       reset_all_votes: {
