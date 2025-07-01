@@ -5,6 +5,7 @@ import { SupabaseListener } from './components/SupabaseListener';
 import ErrorBoundary from './components/ErrorBoundary';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/useAuthStore';
+import WelcomeOverlay from './components/WelcomeOverlay';
 
 // Lazy load components
 const Index = lazy(() => import('./pages/Index'));
@@ -14,6 +15,7 @@ const RequestReset = lazy(() => import('./pages/Reset/RequestReset'));
 const AuthConfirm = lazy(() => import('./pages/Auth/Confirm'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const TilePuzzle = lazy(() => import('@/components/TilePuzzle'));
+const PuzzlePage = lazy(() => import('./pages/PuzzlePage'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -22,15 +24,11 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Main app content with puzzle overlay
-const AppContent = () => {
+// Create a component that decides what to show on the home route
+const HomeRoute = () => {
   const [showPuzzle, setShowPuzzle] = useState(true);
-  const location = useLocation();
   const { currentUser } = useAuthStore();
   
-  // Only show puzzle on the home page for unauthenticated users
-  const shouldShowPuzzle = location.pathname === '/' && !currentUser;
-
   // Reset puzzle state when user becomes unauthenticated
   useEffect(() => {
     if (!currentUser) {
@@ -42,13 +40,44 @@ const AppContent = () => {
     setShowPuzzle(false);
   };
 
+  // If user is authenticated, show Index directly
+  if (currentUser) {
+    return <Index />;
+  }
+
+  // If puzzle completed, show Index
+  if (!showPuzzle) {
+    return <Index />;
+  }
+
+  // Otherwise show puzzle
+  return <TilePuzzle onComplete={handlePuzzleComplete} />;
+};
+
+// Main app content
+const AppContent = () => {
+  const location = useLocation();
+  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(true);
+
+  // Routes where welcome overlay should NOT be displayed
+  const excludedRoutes = ['/login', '/admin', '/reset/request', '/auth/confirm'];
+  
+  // Check if current route should exclude the welcome overlay
+  const shouldShowOverlay = !excludedRoutes.some(route => 
+    location.pathname === route || location.pathname.startsWith(route + '/')
+  );
+
+  const handleWelcomeOverlayDismiss = () => {
+    setShowWelcomeOverlay(false);
+  };
+
   return (
     <>
       <ErrorBoundary>
         <SupabaseListener />
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<HomeRoute />} />
             <Route 
               path="/admin/*" 
               element={
@@ -60,17 +89,23 @@ const AppContent = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/reset/request" element={<RequestReset />} />
             <Route path="/auth/confirm" element={<AuthConfirm />} />
+            <Route 
+              path="/puzzle" 
+              element={
+                <ErrorBoundary>
+                  <PuzzlePage />
+                </ErrorBoundary>
+              } 
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
         <Toaster />
       </ErrorBoundary>
 
-      {/* Puzzle overlay - only shown initially and only on the home page for unauthenticated users */}
-      {shouldShowPuzzle && showPuzzle && (
-        <div className="fixed inset-0 z-50 bg-white">
-          <TilePuzzle onComplete={handlePuzzleComplete} />
-        </div>
+      {/* Welcome overlay - highest priority, shows first on appropriate pages */}
+      {showWelcomeOverlay && shouldShowOverlay && (
+        <WelcomeOverlay onDismiss={handleWelcomeOverlayDismiss} />
       )}
     </>
   );
