@@ -104,7 +104,7 @@ const Index = () => {
   
   return (
     <div className={cn(
-      "min-h-screen transition-opacity duration-500",
+      "min-h-screen bg-background transition-opacity duration-500",
       isPageLoaded ? "opacity-100" : "opacity-0"
     )}>
       <Navbar />

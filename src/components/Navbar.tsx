@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Music, Moon, Sun, LayoutDashboard, LogOut, Key } from 'lucide-react';
+import { Music, Moon, Sun, LayoutDashboard, LogOut, Key, Menu, HelpCircle, Trophy, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -93,7 +93,14 @@ export const Navbar = () => {
         )}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {/* Left side - Hamburger menu and logo */}
+          <div className="flex items-center gap-4">
+            <button 
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <Link to="/" className="flex items-center gap-2">
               <Music className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-semibold tracking-tight">
@@ -102,7 +109,31 @@ export const Navbar = () => {
             </Link>
           </div>
           
+          {/* Right side - Icons and admin controls */}
           <div className="flex items-center gap-3">
+            {/* Help, Leaderboard, Settings icons */}
+            <div className="flex items-center gap-2">
+              <button 
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                aria-label="Help"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </button>
+              <button 
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                aria-label="Leaderboard"
+              >
+                <Trophy className="h-5 w-5" />
+              </button>
+              <button 
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                aria-label="Settings"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Dark mode toggle */}
             <Toggle 
               pressed={isDarkMode}
               onPressedChange={toggleDarkMode}
@@ -144,6 +175,9 @@ export const Navbar = () => {
             )}
           </div>
         </div>
+        
+        {/* Navbar divider line */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-800 to-transparent dark:via-gray-600"></div>
       </header>
       
       <div className="h-16" /> {/* Spacer for fixed header */}
