@@ -110,8 +110,8 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-muted/10 px-4">
       <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-xl shadow-lg border">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Admin Login</h1>
-          <p className="text-muted-foreground mt-2">Sign in to access the admin dashboard</p>
+          <h1 className="text-2xl font-bold">Login or create an account</h1>
+          <p className="text-muted-foreground mt-2">Gain access to extra features!</p>
         </div>
         
         <form onSubmit={handleLogin} className="space-y-6">
