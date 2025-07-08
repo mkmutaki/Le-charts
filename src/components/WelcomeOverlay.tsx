@@ -11,6 +11,8 @@ interface WelcomeOverlayProps {
 const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(true);
+  const [loginButtonState, setLoginButtonState] = useState({ isShaking: false, isFlashing: false });
+  const [gamesButtonState, setGamesButtonState] = useState({ isShaking: false, isFlashing: false });
 
   const handleClose = () => {
     setIsVisible(false);
@@ -23,6 +25,21 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
       navigate(path);
       onDismiss();
     }, 300);
+  };
+
+  const handleDisabledButtonClick = (buttonType: 'login' | 'games') => {
+    const setButtonState = buttonType === 'login' ? setLoginButtonState : setGamesButtonState;
+    
+    setButtonState({ isShaking: true, isFlashing: true });
+    
+    setTimeout(() => {
+      setButtonState({ isShaking: false, isFlashing: false });
+    }, 600);
+  };
+
+  const shakeAnimation = {
+    x: [0, -10, 10, -10, 10, 0],
+    transition: { duration: 0.6 }
   };
 
   return (
@@ -75,13 +92,21 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               transition={{ delay: 0.4 }}
               className="flex flex-col sm:flex-row gap-4 mb-8"
             >
-                <Button
-                onClick={() => handleNavigate('/login')}
-                className="px-16 py-3 text-md font-medium bg-gray-100 border-2 border-solid hover:bg-gray-800 hover:text-gray-100 text-black rounded-full transition-all duration-200 transform hover:scale-105"
-                size="lg"
+              <motion.div
+                animate={loginButtonState.isShaking ? shakeAnimation : {}}
               >
-                Log in
-              </Button>
+                <Button
+                  onClick={() => handleDisabledButtonClick('login')}
+                  className={`px-16 py-3 text-md font-medium border-2 border-solid rounded-full transition-all duration-200 transform hover:scale-105 ${
+                    loginButtonState.isFlashing 
+                      ? 'bg-red-500 text-white border-red-500' 
+                      : 'bg-gray-100 hover:bg-gray-800 hover:text-gray-100 text-black'
+                  }`}
+                  size="lg"
+                >
+                  Log in
+                </Button>
+              </motion.div>
 
               <Button
                 onClick={() => handleNavigate('/')}
@@ -91,13 +116,21 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
                 Play & Vote
               </Button>
 
-              <Button
-                onClick={() => handleNavigate('/more_games')}
-                className="px-4 py-3 text-md font-medium bg-gray-100 border-2 border-solid hover:bg-gray-800 hover:text-gray-100 text-black rounded-full transition-all duration-200 transform hover:scale-105"
-                size="lg"
+              <motion.div
+                animate={gamesButtonState.isShaking ? shakeAnimation : {}}
               >
-                See more games..
-              </Button>
+                <Button
+                  onClick={() => handleDisabledButtonClick('games')}
+                  className={`px-4 py-3 text-md font-medium border-2 border-solid rounded-full transition-all duration-200 transform hover:scale-105 ${
+                    gamesButtonState.isFlashing 
+                      ? 'bg-red-500 text-white border-red-500' 
+                      : 'bg-gray-100 hover:bg-gray-800 hover:text-gray-100 text-black'
+                  }`}
+                  size="lg"
+                >
+                  See more games..
+                </Button>
+              </motion.div>
 
             </motion.div>
           </div>
