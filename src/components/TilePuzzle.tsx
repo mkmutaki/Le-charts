@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image as ImageIcon, Play } from 'lucide-react';
+import { X, Image as ImageIcon } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import {
   TILE_COUNT,
@@ -23,7 +23,6 @@ interface TilePuzzleProps {
 const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
   const { settings, loading } = usePuzzleSettings();
   const [showReferenceImage, setShowReferenceImage] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
   const [gameState, setGameState] = useState<TilePuzzleState>({
     tiles: Array.from({ length: TILE_COUNT }, (_, i) => i),
     emptyTileIndex: EMPTY_TILE_VALUE,
@@ -33,7 +32,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
   });
 
   const handleTileClick = useCallback((tileValue: number) => {
-    if (gameState.isShuffling || gameState.isWon || !gameStarted) return;
+    if (gameState.isShuffling || gameState.isWon) return;
 
     const clickedTileIndex = gameState.tiles.indexOf(tileValue);
     
@@ -59,13 +58,9 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         };
       });
     }
-  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete, gameStarted]);
+  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete]);
 
   const handleShuffle = useCallback(async () => {
-    if (!gameStarted) {
-      setGameStarted(true);
-    }
-    
     setGameState(prev => ({
       ...prev,
       isShuffling: true,
@@ -84,7 +79,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
       emptyTileIndex: emptyIndex,
       isShuffling: false,
     }));
-  }, [gameState.tiles, gameState.emptyTileIndex, gameStarted]);
+  }, [gameState.tiles, gameState.emptyTileIndex]);
 
   if (loading) {
     return (
@@ -139,26 +134,33 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
                 />
               );
             })}
-            
-            {/* Start Button Overlay */}
-            {!gameStarted && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-10">
-                <motion.button
-                  onClick={handleShuffle}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-primary text-primary-foreground font-medium px-6 py-3 rounded-full shadow-lg flex items-center gap-2"
-                >
-                  <Play className="h-4 w-4" />
-                  Click to Start
-                </motion.button>
-              </div>
-            )}
           </div>
           
           {/* Controls */}
           <div className="flex justify-between items-center">
-            {/* View Reference button moved to left position */}
+            <Button
+              onClick={handleShuffle}
+              disabled={gameState.isShuffling}
+              variant="default"
+              size="sm"
+            >
+              {gameState.isShuffling ? 'Shuffling...' : 'Shuffle'}
+            </Button>
+            
+            <div className="text-lg font-medium">
+              Moves: <span className="font-bold">{gameState.moveCount}</span>
+            </div>
+          </div>
+          
+          {/* Win Message */}
+          {gameState.isWon && (
+            <div className="text-center text-green-600 font-semibold text-lg animate-pulse">
+              🎉 You solved it in {gameState.moveCount} moves! 🎉
+            </div>
+          )}
+          
+          {/* Reference Image Button */}
+          <div className="flex justify-center">
             <motion.button
               onClick={() => setShowReferenceImage(true)}
               className="group relative flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg hover:border-muted-foreground"
@@ -177,18 +179,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
                 />
               )}
             </motion.button>
-            
-            <div className="text-lg font-medium">
-              Moves: <span className="font-bold">{gameState.moveCount}</span>
-            </div>
           </div>
-          
-          {/* Win Message */}
-          {gameState.isWon && (
-            <div className="text-center text-green-600 font-semibold text-lg animate-pulse">
-              🎉 You solved it in {gameState.moveCount} moves! 🎉
-            </div>
-          )}
           
           <p className="text-xs text-muted-foreground text-center">
             Album Cover: {albumArtist} - {albumTitle}
