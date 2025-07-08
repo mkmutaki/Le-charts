@@ -63,7 +63,7 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               className="mb-5"
             >
               <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
-                <Music className="h-12 w-12 text-white" />
+                <Music className="h-12 w-12 mr-1 text-white" />
               </div>
             </motion.div>
 
