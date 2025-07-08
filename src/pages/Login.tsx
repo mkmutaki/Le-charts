@@ -4,7 +4,7 @@ import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store';
-import { Mail, Lock, LogIn, KeyRound } from 'lucide-react';
+import { Mail, Music, Lock, LogIn, KeyRound } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -107,7 +107,11 @@ const Login = () => {
   }
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/10 px-4">
+    
+    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/10">
+      <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center mb-8">
+                <Music className="h-12 w-12 text-white" />
+              </div>
       <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-xl shadow-lg border">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Login or create an account</h1>
