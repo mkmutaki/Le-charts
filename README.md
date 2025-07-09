@@ -3,7 +3,7 @@
 ## About :
 A modern, interactive music voting and discovery platform with album puzzle challenges.
 
-🔴 Browse and vote for their favorite songs in a daily updated music chart.
+🔴 Browse and vote for your favorite songs in a daily updated music chart.
 
 🔴 Participate in daily puzzle challenges by reassembling album covers.
 
