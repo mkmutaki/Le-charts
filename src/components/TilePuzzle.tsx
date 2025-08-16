@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Image as ImageIcon, Play } from 'lucide-react';
@@ -24,6 +25,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
   const { settings, loading } = usePuzzleSettings();
   const [showReferenceImage, setShowReferenceImage] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [showMaxMovesDialog, setShowMaxMovesDialog] = useState(false);
   const [gameState, setGameState] = useState<TilePuzzleState>({
     tiles: Array.from({ length: TILE_COUNT }, (_, i) => i),
     emptyTileIndex: EMPTY_TILE_VALUE,
@@ -33,7 +35,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
   });
 
   const handleTileClick = useCallback((tileValue: number) => {
-    if (gameState.isShuffling || gameState.isWon || !gameStarted) return;
+    if (gameState.isShuffling || gameState.isWon || !gameStarted || showMaxMovesDialog) return;
 
     const clickedTileIndex = gameState.tiles.indexOf(tileValue);
     
@@ -48,6 +50,9 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         
         if (hasWon) {
           setTimeout(() => onComplete(), 2000);
+        } else if (newMoveCount >= 50) {
+          // Show max moves dialog after a short delay
+          setTimeout(() => setShowMaxMovesDialog(true), 500);
         }
         
         return {
@@ -59,7 +64,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         };
       });
     }
-  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete, gameStarted]);
+  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete, gameStarted, showMaxMovesDialog]);
 
   const handleShuffle = useCallback(async () => {
     if (!gameStarted) {
@@ -85,6 +90,11 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
       isShuffling: false,
     }));
   }, [gameState.tiles, gameState.emptyTileIndex, gameStarted]);
+
+  const handleMaxMovesVote = () => {
+    setShowMaxMovesDialog(false);
+    setTimeout(() => onComplete(), 500);
+  };
 
   if (loading) {
     return (
@@ -178,8 +188,13 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
               )}
             </motion.button>
             
-            <div className="text-lg font-medium">
+            <div className={cn(
+              "text-lg font-medium",
+              gameState.moveCount >= 40 && gameState.moveCount < 50 && "text-orange-600",
+              gameState.moveCount >= 50 && "text-red-600"
+            )}>
               Moves: <span className="font-bold">{gameState.moveCount}</span>
+              <span className="text-sm text-muted-foreground ml-1">/50</span>
             </div>
           </div>
           
@@ -248,6 +263,26 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Max Moves Dialog */}
+      <Dialog open={showMaxMovesDialog} onOpenChange={setShowMaxMovesDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Game Over</DialogTitle>
+            <DialogDescription className="text-center">
+              You have run out of moves for the day
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center mt-4">
+            <Button 
+              onClick={handleMaxMovesVote}
+              className="px-8 py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Go ahead and vote
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
