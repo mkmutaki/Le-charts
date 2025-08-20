@@ -1,6 +1,6 @@
 // Service Worker for Le-Charts
-const CACHE_NAME = 'le-charts-v2';
-const RUNTIME_CACHE = 'le-charts-runtime';
+const CACHE_NAME = 'le-charts-v3';
+const RUNTIME_CACHE = 'le-charts-runtime-v3';
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
@@ -222,6 +222,10 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CLEAR_SONGS_CACHE') {
     clearSongsCache();
   }
+  
+  if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    clearAllCaches();
+  }
 });
 
 // Function to clear the songs cache on demand
@@ -235,4 +239,12 @@ async function clearSongsCache() {
       await cache.delete(request);
     }
   }
+}
+
+// Function to clear all caches (for major updates)
+async function clearAllCaches() {
+  const cacheNames = await caches.keys();
+  await Promise.all(
+    cacheNames.map(cacheName => caches.delete(cacheName))
+  );
 }
