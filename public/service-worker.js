@@ -1,6 +1,6 @@
 // Service Worker for Le-Charts
-const CACHE_NAME = 'le-charts-v3';
-const RUNTIME_CACHE = 'le-charts-runtime-v3';
+const CACHE_NAME = 'le-charts-v4';
+const RUNTIME_CACHE = 'le-charts-runtime-v4';
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
