@@ -16,32 +16,47 @@ export type Database = {
     Tables: {
       LeSongs: {
         Row: {
+          album_id: string | null
+          album_name: string | null
           artist: string | null
           cover_url: string | null
           created_at: string
           id: number
+          itunes_track_id: string | null
           song_name: string | null
           song_url: string | null
+          track_duration_ms: number | null
+          track_number: number | null
           updated_at: string | null
           votes: number | null
         }
         Insert: {
+          album_id?: string | null
+          album_name?: string | null
           artist?: string | null
           cover_url?: string | null
           created_at?: string
           id?: number
+          itunes_track_id?: string | null
           song_name?: string | null
           song_url?: string | null
+          track_duration_ms?: number | null
+          track_number?: number | null
           updated_at?: string | null
           votes?: number | null
         }
         Update: {
+          album_id?: string | null
+          album_name?: string | null
           artist?: string | null
           cover_url?: string | null
           created_at?: string
           id?: number
+          itunes_track_id?: string | null
           song_name?: string | null
           song_url?: string | null
+          track_duration_ms?: number | null
+          track_number?: number | null
           updated_at?: string | null
           votes?: number | null
         }

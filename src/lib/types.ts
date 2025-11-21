@@ -7,6 +7,11 @@ export interface Song {
   votes: number;
   addedAt: Date;
   votedBy: string[]; // Array of user IDs who voted for this song
+  albumName?: string;
+  albumId?: string;
+  itunesTrackId?: string;
+  trackNumber?: number;
+  trackDurationMs?: number;
 }
 
 export interface SongFormData {

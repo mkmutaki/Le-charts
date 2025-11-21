@@ -166,7 +166,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
               value={formData.title}
               onChange={handleChange}
               className={cn(
-                "w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all",
+                "w-full px-3 py-2 rounded-lg border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all",
                 errors.title ? "border-destructive" : "border-input"
               )}
               placeholder="Enter song title"
@@ -188,7 +188,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
               value={formData.artist}
               onChange={handleChange}
               className={cn(
-                "w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all",
+                "w-full px-3 py-2 rounded-lg border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all",
                 errors.artist ? "border-destructive" : "border-input"
               )}
               placeholder="Enter artist name"
@@ -209,7 +209,7 @@ export const AddSongModal = ({ isOpen, onClose }: AddSongModalProps) => {
               name="songUrl"
               value={formData.songUrl}
               onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
               placeholder="https://open.spotify.com/track/..."
               disabled={isSubmitting}
             />

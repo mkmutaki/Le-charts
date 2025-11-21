@@ -114,10 +114,10 @@ const Index = () => {
           <div className="flex flex-row md:items-end justify-between gap-4 mb-6">
             <div>
               <h2 className=" text-3xl md:text-4xl font-bold mb-5">
-                Top 10 Songs
+                Album of the day: Album name
               </h2>
               <div className='flex flex-row justify-between text-muted-foreground mt-2 md:space-x-[307px]'>
-                <p className="text-start ml-1">Vote for your favorite</p>
+                <p className="text-start ml-1">Vote for your fav song</p>
               </div>
             </div>
             

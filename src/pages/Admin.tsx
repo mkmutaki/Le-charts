@@ -3,7 +3,7 @@ import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil, Key, ImageIco
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
 import { Song } from '@/lib/types';
-import { AddSongModal } from '@/components/AddSongModal';
+import { AlbumSearchModal } from '@/components/AlbumSearchModal';
 import { EditSongModal } from '@/components/EditSongModal';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
 import { AlbumCoverUploadModal } from '@/components/AlbumCoverUploadModal';
@@ -184,7 +184,7 @@ const Admin = () => {
               className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:opacity-90 transition-all active:scale-95"
             >
               <Plus className="h-4 w-4" />
-              <span>Add Song</span>
+              <span>Search Albums</span>
             </button>
           </div>
         </div>
@@ -219,9 +219,10 @@ const Admin = () => {
         </div>
       </main>
       
-      <AddSongModal 
+      <AlbumSearchModal 
         isOpen={isAddSongOpen} 
         onClose={() => setIsAddSongOpen(false)} 
+        onAlbumUploaded={fetchSongs}
       />
       
       <EditSongModal
