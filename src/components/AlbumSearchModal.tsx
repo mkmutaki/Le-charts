@@ -3,7 +3,7 @@ import { X, Search, Loader2, Music, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
-import { searchAlbums, getAlbumTracks, ITunesAlbum, ITunesTrack } from '@/lib/services/itunesService';
+import { searchAlbums, getAlbumTracks, ITunesAlbum, ITunesTrack } from '@/lib/services/spotifyService';
 
 interface AlbumSearchModalProps {
   isOpen: boolean;
@@ -200,19 +200,20 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
               
               {/* Search results grid */}
               {!isSearching && searchResults.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {searchResults.map((album) => (
                     <div
                       key={album.collectionId}
-                      className="group relative bg-muted/30 rounded-xl overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
+                      className="group relative bg-muted/30 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
                       onClick={() => handleAlbumSelect(album)}
                     >
                       {/* Cover art */}
-                      <div className="relative aspect-square overflow-hidden">
+                      <div className="relative w-full h-32 sm:h-36 md:h-40 overflow-hidden">
                         <img
-                          src={album.artworkUrl100.replace('100x100', '300x300')}
+                          src={album.artworkUrl600}
                           alt={`${album.collectionName} by ${album.artistName}`}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          loading="lazy"
                         />
                         {/* Track count badge */}
                         <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
@@ -222,21 +223,21 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                       </div>
                       
                       {/* Album info */}
-                      <div className="p-3">
-                        <h3 className="font-semibold text-sm line-clamp-1 mb-1">
+                      <div className="p-2">
+                        <h3 className="font-semibold text-xs line-clamp-1 mb-0.5">
                           {album.collectionName}
                         </h3>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
+                        <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
                           {album.artistName}
                         </p>
                         <button
-                          className="mt-2 w-full bg-primary text-primary-foreground py-1.5 rounded-lg text-xs font-medium hover:opacity-90 transition-opacity"
+                          className="w-full bg-primary text-primary-foreground py-1.5 rounded-md text-xs font-medium hover:opacity-90 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleAlbumSelect(album);
                           }}
                         >
-                          Select Album
+                          Select
                         </button>
                       </div>
                     </div>
@@ -267,20 +268,21 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
             // Selected album view
             <div className="p-5 space-y-4">
               {/* Album header */}
-              <div className="flex gap-4 pb-4 border-b">
+              <div className="flex gap-3 pb-4 border-b">
                 <img
-                  src={selectedAlbum.artworkUrl100.replace('100x100', '200x200')}
+                  src={selectedAlbum.artworkUrl600}
                   alt={`${selectedAlbum.collectionName} cover`}
-                  className="w-24 h-24 rounded-lg shadow-md flex-shrink-0"
+                  className="w-20 h-20 rounded-lg shadow-md flex-shrink-0 object-cover"
+                  loading="lazy"
                 />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-lg line-clamp-2">
+                  <h3 className="font-semibold text-base line-clamp-2">
                     {selectedAlbum.collectionName}
                   </h3>
-                  <p className="text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {selectedAlbum.artistName}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {selectedAlbum.trackCount} tracks • {selectedAlbum.primaryGenreName}
                   </p>
                   <button
