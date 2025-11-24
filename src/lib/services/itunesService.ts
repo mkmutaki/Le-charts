@@ -53,7 +53,7 @@ export async function searchAlbums(query: string): Promise<ITunesAlbum[]> {
       term: query.trim(),
       media: 'music',
       entity: 'album',
-      limit: '20',
+      limit: '200',
       country: 'US' // Can be made configurable
     });
 
@@ -172,7 +172,7 @@ export async function searchAlbumsByArtist(artistName: string): Promise<ITunesAl
       media: 'music',
       entity: 'album',
       attribute: 'artistTerm', // Search specifically in artist names
-      limit: '50',
+      limit: '200',
       country: 'US',
     });
 
