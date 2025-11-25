@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Search, Loader2, Music, CheckCircle2 } from 'lucide-react';
+import { X, Search, Loader2, Music, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSongStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { searchAlbums, getAlbumTracks, ITunesAlbum, ITunesTrack } from '@/lib/services/spotifyService';
+import { Badge } from '@/components/ui/badge';
 
 interface AlbumSearchModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface AlbumSearchModalProps {
 }
 
 export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSearchModalProps) => {
-  const { addSong, setCurrentAlbum } = useSongStore();
+  const { addAlbumTracks, checkExistingTracks, setCurrentAlbum } = useSongStore();
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +21,7 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
   const [selectedAlbum, setSelectedAlbum] = useState<ITunesAlbum | null>(null);
   const [albumTracks, setAlbumTracks] = useState<ITunesTrack[]>([]);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(new Set());
+  const [existingTrackIds, setExistingTrackIds] = useState<Set<string>>(new Set());
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingTracks, setIsLoadingTracks] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -55,6 +57,7 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
       setSelectedAlbum(null);
       setAlbumTracks([]);
       setSelectedTrackIds(new Set());
+      setExistingTrackIds(new Set());
     }
   }, [isOpen]);
   
@@ -78,9 +81,18 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
       const tracks = await getAlbumTracks(album.collectionId);
       setAlbumTracks(tracks);
       
-      // Select all tracks by default
-      const allTrackIds = new Set(tracks.map(track => track.trackId));
-      setSelectedTrackIds(allTrackIds);
+      // Check which tracks already exist in the database
+      const trackIdsToCheck = tracks.map(track => String(track.trackId));
+      const existingIds = await checkExistingTracks(trackIdsToCheck);
+      setExistingTrackIds(existingIds);
+      
+      // Select all non-existing tracks by default
+      const nonExistingTrackIds = new Set(
+        tracks
+          .filter(track => !existingIds.has(String(track.trackId)))
+          .map(track => track.trackId)
+      );
+      setSelectedTrackIds(nonExistingTrackIds);
     } catch (error) {
       console.error('Error loading tracks:', error);
       toast.error('Failed to load album tracks');
@@ -91,6 +103,11 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
   };
   
   const handleTrackToggle = (trackId: number) => {
+    // Don't allow toggling tracks that already exist
+    if (existingTrackIds.has(String(trackId))) {
+      return;
+    }
+    
     setSelectedTrackIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(trackId)) {
@@ -109,38 +126,30 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
     const selectedTracks = albumTracks.filter(track => selectedTrackIds.has(track.trackId));
     
     try {
-      let successCount = 0;
-      let failCount = 0;
-      
       // Set the current album in the store before uploading tracks
       setCurrentAlbum({
         name: selectedAlbum.collectionName,
         artist: selectedAlbum.artistName
       });
       
-      for (const track of selectedTracks) {
-        try {
-          await addSong({
-            title: track.trackName,
-            artist: track.artistName,
-            coverUrl: track.artworkUrl600 || track.artworkUrl100,
-            songUrl: track.trackViewUrl,
-          });
-          successCount++;
-        } catch (error) {
-          console.error(`Failed to add track: ${track.trackName}`, error);
-          failCount++;
-        }
-      }
+      // Prepare track data with iTunes track IDs
+      const tracksToUpload = selectedTracks.map(track => ({
+        title: track.trackName,
+        artist: track.artistName,
+        coverUrl: track.artworkUrl600 || track.artworkUrl100,
+        songUrl: track.trackViewUrl,
+        itunesTrackId: String(track.trackId),
+        albumName: track.collectionName,
+        trackNumber: track.trackNumber,
+        trackDurationMs: track.trackTimeMillis,
+      }));
       
-      if (successCount > 0) {
-        toast.success(`Successfully added ${successCount} track${successCount > 1 ? 's' : ''} to the chart!`);
+      // Use the new batch upload function
+      const result = await addAlbumTracks(tracksToUpload);
+      
+      if (result.added > 0) {
         onAlbumUploaded();
         onClose();
-      }
-      
-      if (failCount > 0) {
-        toast.error(`Failed to add ${failCount} track${failCount > 1 ? 's' : ''}`);
       }
     } catch (error) {
       console.error('Error uploading tracks:', error);
@@ -311,17 +320,42 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
               {/* Track list */}
               {!isLoadingTracks && albumTracks.length > 0 && (
                 <>
+                  {/* Warning if all tracks exist */}
+                  {existingTrackIds.size === albumTracks.length && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          All tracks already exist
+                        </p>
+                        <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                          All tracks from this album are already in the chart.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
-                      {selectedTrackIds.size} of {albumTracks.length} tracks selected
+                      {selectedTrackIds.size} of {albumTracks.length - existingTrackIds.size} new tracks selected
+                      {existingTrackIds.size > 0 && (
+                        <span className="text-muted-foreground ml-1">
+                          ({existingTrackIds.size} already in chart)
+                        </span>
+                      )}
                     </p>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setSelectedTrackIds(new Set(albumTracks.map(t => t.trackId)))}
+                        onClick={() => {
+                          const nonExistingTrackIds = albumTracks
+                            .filter(track => !existingTrackIds.has(String(track.trackId)))
+                            .map(t => t.trackId);
+                          setSelectedTrackIds(new Set(nonExistingTrackIds));
+                        }}
                         className="text-xs text-primary hover:underline"
-                        disabled={isUploading}
+                        disabled={isUploading || existingTrackIds.size === albumTracks.length}
                       >
-                        Select All
+                        Select All New
                       </button>
                       <button
                         onClick={() => setSelectedTrackIds(new Set())}
@@ -335,6 +369,7 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                   
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {albumTracks.map((track) => {
+                      const isExisting = existingTrackIds.has(String(track.trackId));
                       const isSelected = selectedTrackIds.has(track.trackId);
                       const duration = Math.floor(track.trackTimeMillis / 1000);
                       const minutes = Math.floor(duration / 60);
@@ -344,8 +379,11 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                         <label
                           key={track.trackId}
                           className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all",
-                            isSelected ? "bg-primary/10 hover:bg-primary/15" : "bg-muted/30 hover:bg-muted/50",
+                            "flex items-center gap-3 p-3 rounded-lg transition-all",
+                            isExisting && "opacity-50 cursor-not-allowed",
+                            !isExisting && "cursor-pointer",
+                            !isExisting && isSelected && "bg-primary/10 hover:bg-primary/15",
+                            !isExisting && !isSelected && "bg-muted/30 hover:bg-muted/50",
                             isUploading && "opacity-60 cursor-not-allowed"
                           )}
                         >
@@ -353,14 +391,17 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleTrackToggle(track.trackId)}
-                            disabled={isUploading}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+                            disabled={isUploading || isExisting}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30 disabled:cursor-not-allowed"
                           />
                           <div className="flex-shrink-0 w-6 text-sm text-muted-foreground text-center">
                             {track.trackNumber}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">
+                            <p className={cn(
+                              "font-medium text-sm truncate",
+                              isExisting && "line-through"
+                            )}>
                               {track.trackName}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
@@ -370,7 +411,12 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                           <div className="flex-shrink-0 text-xs text-muted-foreground">
                             {minutes}:{seconds.toString().padStart(2, '0')}
                           </div>
-                          {isSelected && (
+                          {isExisting && (
+                            <Badge variant="secondary" className="flex-shrink-0">
+                              Already in chart
+                            </Badge>
+                          )}
+                          {!isExisting && isSelected && (
                             <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
                           )}
                         </label>
