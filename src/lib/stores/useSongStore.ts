@@ -12,16 +12,23 @@ const MIN_FETCH_INTERVAL = 120000; // 120 seconds (2 minutes)
 interface SongState extends BaseState {
   songs: Song[];
   isLoading: boolean;
+  currentAlbum: { name: string; artist: string } | null;
   fetchSongs: () => Promise<void>;
   addSong: (songData: SongFormData) => Promise<void>;
   updateSong: (songId: string, songData: SongFormData) => Promise<void>;
   deleteSong: (songId: string) => Promise<void>;
+  setCurrentAlbum: (album: { name: string; artist: string } | null) => void;
 }
 
 export const useSongStore = createBaseStore<SongState>(
   (set, get) => ({
     songs: [],
     isLoading: false,
+    currentAlbum: null,
+    
+    setCurrentAlbum: (album) => {
+      set({ currentAlbum: album });
+    },
     
     fetchSongs: async () => {
       // Add timestamp-based deduplication

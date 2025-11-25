@@ -12,7 +12,7 @@ interface AlbumSearchModalProps {
 }
 
 export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSearchModalProps) => {
-  const { addSong } = useSongStore();
+  const { addSong, setCurrentAlbum } = useSongStore();
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +111,12 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
     try {
       let successCount = 0;
       let failCount = 0;
+      
+      // Set the current album in the store before uploading tracks
+      setCurrentAlbum({
+        name: selectedAlbum.collectionName,
+        artist: selectedAlbum.artistName
+      });
       
       for (const track of selectedTracks) {
         try {

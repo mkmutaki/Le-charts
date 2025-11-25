@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { clearSongsCache } from '@/lib/serviceWorker';
 
 const Index = () => {
-  const { songs, fetchSongs, isLoading: storeLoading } = useSongStore();
+  const { songs, fetchSongs, isLoading: storeLoading, currentAlbum } = useSongStore();
   const { getUserVotedSong } = useVotingStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
@@ -114,10 +114,10 @@ const Index = () => {
           <div className="flex flex-row md:items-end justify-between gap-4 mb-6">
             <div>
               <h2 className=" text-3xl md:text-4xl font-bold mb-5">
-                Album of the day: Album name
+                Album: {currentAlbum ? currentAlbum.name : 'No album selected'}
               </h2>
               <div className='flex flex-row justify-between text-muted-foreground mt-2 md:space-x-[307px]'>
-                <p className="text-start ml-1">Vote for your fav song</p>
+                <p className="text-start ml-1">Vote for your top song</p>
               </div>
             </div>
             
