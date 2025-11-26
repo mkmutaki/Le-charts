@@ -1,10 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Search, Loader2, Music, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSongStore } from '@/lib/store';
+import { useSongStore, useVotingStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { searchAlbums, getAlbumTracks, ITunesAlbum, ITunesTrack } from '@/lib/services/spotifyService';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface AlbumSearchModalProps {
   isOpen: boolean;
@@ -13,7 +24,7 @@ interface AlbumSearchModalProps {
 }
 
 export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSearchModalProps) => {
-  const { addAlbumTracks, checkExistingTracks, setCurrentAlbum } = useSongStore();
+  const { addAlbumTracks, checkExistingTracks, setCurrentAlbum, currentUser, checkIsAdmin, getSongsCount, deleteAllSongs } = useSongStore();
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,7 +35,13 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
   const [existingTrackIds, setExistingTrackIds] = useState<Set<string>>(new Set());
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingTracks, setIsLoadingTracks] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false)
+  const [failedTrackIds, setFailedTrackIds] = useState<Set<number>>(new Set());
+  const [uploadAttempted, setUploadAttempted] = useState(false);
+  const [showLargeAlbumConfirm, setShowLargeAlbumConfirm] = useState(false);
+  const [uploadCancelled, setUploadCancelled] = useState(false);
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+  const [existingSongsCount, setExistingSongsCount] = useState(0);
   
   // Debounced search effect
   useEffect(() => {
@@ -40,7 +57,13 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
         setSearchResults(results.slice(0, 200)); 
       } catch (error) {
         console.error('Search error:', error);
-        toast.error('Failed to search albums');
+        // Show user-friendly error message
+        if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error('Failed to search albums. Please try again.');
+        }
+        setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
@@ -58,8 +81,22 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
       setAlbumTracks([]);
       setSelectedTrackIds(new Set());
       setExistingTrackIds(new Set());
+      setFailedTrackIds(new Set());
+      setUploadAttempted(false);
+      setUploadCancelled(false);
+      setShowLargeAlbumConfirm(false);
+      setShowReplaceConfirm(false);
+      setExistingSongsCount(0);
     }
   }, [isOpen]);
+
+  // Verify admin status when modal opens
+  useEffect(() => {
+    if (isOpen && !checkIsAdmin()) {
+      toast.error('Only admins can upload albums');
+      onClose();
+    }
+  }, [isOpen, checkIsAdmin, onClose]);
   
   // Handle ESC key to close modal
   useEffect(() => {
@@ -74,28 +111,53 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
   }, [isOpen, isUploading, onClose]);
   
   const handleAlbumSelect = async (album: ITunesAlbum) => {
+    // Validate album art URL
+    if (!album.artworkUrl600 && !album.artworkUrl100) {
+      toast.error('This album is missing artwork and cannot be uploaded');
+      return;
+    }
+
+    // Validate album art URL format
+    try {
+      const artworkUrl = album.artworkUrl600 || album.artworkUrl100;
+      const url = new URL(artworkUrl);
+      if (!url.protocol.startsWith('http')) {
+        throw new Error('Invalid URL protocol');
+      }
+    } catch (error) {
+      toast.error('This album has an invalid artwork URL and cannot be uploaded');
+      return;
+    }
+
     setSelectedAlbum(album);
     setIsLoadingTracks(true);
     
     try {
       const tracks = await getAlbumTracks(album.collectionId);
+      
+      // Validate we got tracks back
+      if (!tracks || tracks.length === 0) {
+        toast.error('This album has no tracks and cannot be uploaded');
+        setSelectedAlbum(null);
+        return;
+      }
+      
       setAlbumTracks(tracks);
       
-      // Check which tracks already exist in the database
-      const trackIdsToCheck = tracks.map(track => String(track.trackId));
-      const existingIds = await checkExistingTracks(trackIdsToCheck);
-      setExistingTrackIds(existingIds);
+      // Select all tracks by default (no need to check existing since we're replacing)
+      const allTrackIds = new Set(tracks.map(track => track.trackId));
+      setSelectedTrackIds(allTrackIds);
       
-      // Select all non-existing tracks by default
-      const nonExistingTrackIds = new Set(
-        tracks
-          .filter(track => !existingIds.has(String(track.trackId)))
-          .map(track => track.trackId)
-      );
-      setSelectedTrackIds(nonExistingTrackIds);
+      // Clear existing track IDs since we're doing a full replacement
+      setExistingTrackIds(new Set());
     } catch (error) {
       console.error('Error loading tracks:', error);
-      toast.error('Failed to load album tracks');
+      // Show user-friendly error message
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to load album tracks. Please try again.');
+      }
       setSelectedAlbum(null);
     } finally {
       setIsLoadingTracks(false);
@@ -103,11 +165,6 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
   };
   
   const handleTrackToggle = (trackId: number) => {
-    // Don't allow toggling tracks that already exist
-    if (existingTrackIds.has(String(trackId))) {
-      return;
-    }
-    
     setSelectedTrackIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(trackId)) {
@@ -120,9 +177,29 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
   };
   
   const handleUploadTracks = async () => {
-    if (!selectedAlbum || selectedTrackIds.size === 0) return;
+    if (!selectedAlbum || selectedTrackIds.size === 0) {
+      toast.error('Please select at least one track to upload');
+      return;
+    }
+    
+    // Check for large album and show confirmation
+    if (selectedTrackIds.size > 20 && !uploadAttempted) {
+      setShowLargeAlbumConfirm(true);
+      return;
+    }
+    
+    // Check if there are existing songs in the database
+    const songsCount = await getSongsCount();
+    
+    if (songsCount > 0 && !uploadAttempted) {
+      // Show replacement confirmation dialog
+      setExistingSongsCount(songsCount);
+      setShowReplaceConfirm(true);
+      return;
+    }
     
     setIsUploading(true);
+    setUploadCancelled(false);
     const selectedTracks = albumTracks.filter(track => selectedTrackIds.has(track.trackId));
     
     try {
@@ -131,6 +208,17 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
         name: selectedAlbum.collectionName,
         artist: selectedAlbum.artistName
       });
+      
+      // Delete all existing songs if there were any
+      if (songsCount > 0) {
+        console.log(`Deleting ${songsCount} existing songs and clearing all votes...`);
+        await deleteAllSongs();
+        
+        // Clear the local voting state since all votes were deleted
+        useVotingStore.setState({ votedSongId: null });
+        
+        toast.success(`Deleted ${songsCount} existing song${songsCount !== 1 ? 's' : ''} and cleared all votes`);
+      }
       
       // Prepare track data with iTunes track IDs
       const tracksToUpload = selectedTracks.map(track => ({
@@ -144,16 +232,71 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
         trackDurationMs: track.trackTimeMillis,
       }));
       
-      // Use the new batch upload function
+      // Check if cancelled
+      if (uploadCancelled) {
+        toast.info('Upload cancelled');
+        return;
+      }
+      
+      // Use the batch upload function with error tracking
       const result = await addAlbumTracks(tracksToUpload);
       
-      if (result.added > 0) {
+      // Check if cancelled after upload
+      if (uploadCancelled) {
+        toast.info('Upload cancelled');
+        return;
+      }
+      
+      setUploadAttempted(true);
+      
+      // If there were failures, mark failed tracks and update UI
+      if (result.failed > 0 && result.failedTracks) {
+        const failedIds = new Set<number>();
+        
+        // Map failed tracks back to their IDs
+        result.failedTracks.forEach(failedTrack => {
+          const track = albumTracks.find(t => 
+            t.trackName === failedTrack.title && 
+            t.artistName === failedTrack.artist
+          );
+          if (track) {
+            failedIds.add(track.trackId);
+          }
+        });
+        
+        setFailedTrackIds(failedIds);
+        
+        // Deselect successfully uploaded tracks
+        const newSelectedIds = new Set(selectedTrackIds);
+        selectedTracks.forEach(track => {
+          if (!failedIds.has(track.trackId)) {
+            newSelectedIds.delete(track.trackId);
+            // Mark as existing so it shows as "already in chart"
+            setExistingTrackIds(prev => new Set([...prev, String(track.trackId)]));
+          }
+        });
+        setSelectedTrackIds(newSelectedIds);
+        
+        // Don't close modal - allow user to retry failed tracks
+        if (result.added > 0) {
+          // Partial success - call the callback but keep modal open
+          onAlbumUploaded();
+        }
+      } else if (result.added > 0) {
+        // Full success
         onAlbumUploaded();
+        onClose();
+      } else {
+        // No tracks added - close modal
         onClose();
       }
     } catch (error) {
       console.error('Error uploading tracks:', error);
-      toast.error('Failed to upload tracks');
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to upload tracks. Please try again.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -163,6 +306,24 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
     setSelectedAlbum(null);
     setAlbumTracks([]);
     setSelectedTrackIds(new Set());
+  };
+
+  const handleCancelUpload = () => {
+    setUploadCancelled(true);
+    toast.info('Cancelling upload...');
+  };
+
+  const confirmLargeAlbumUpload = () => {
+    setShowLargeAlbumConfirm(false);
+    // Re-trigger upload
+    handleUploadTracks();
+  };
+  
+  const confirmReplaceAlbum = () => {
+    setShowReplaceConfirm(false);
+    setUploadAttempted(true); // Mark as attempted to skip this check on retry
+    // Re-trigger upload
+    handleUploadTracks();
   };
   
   if (!isOpen) return null;
@@ -203,13 +364,23 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                   placeholder="Search for albums or artists..."
                   className="w-full pl-10 pr-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   autoFocus
+                  disabled={isUploading || isLoadingTracks}
                 />
               </div>
               
               {/* Loading spinner */}
               {isSearching && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div key={index} className="bg-muted/30 rounded-lg overflow-hidden">
+                      <Skeleton className="w-full h-32 sm:h-36 md:h-40" />
+                      <div className="p-2 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                        <Skeleton className="h-8 w-full" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
               
@@ -219,8 +390,11 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                   {searchResults.map((album) => (
                     <div
                       key={album.collectionId}
-                      className="group relative bg-muted/30 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-                      onClick={() => handleAlbumSelect(album)}
+                      className={cn(
+                        "group relative bg-muted/30 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02]",
+                        (isUploading || isLoadingTracks) && "opacity-50 cursor-not-allowed pointer-events-none"
+                      )}
+                      onClick={() => !isUploading && !isLoadingTracks && handleAlbumSelect(album)}
                     >
                       {/* Cover art */}
                       <div className="relative w-full h-32 sm:h-36 md:h-40 overflow-hidden">
@@ -312,24 +486,38 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
               
               {/* Loading tracks */}
               {isLoadingTracks && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  {Array.from({ length: 10 }).map((_, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <Skeleton className="h-4 w-4 rounded" />
+                      <Skeleton className="h-4 w-6" />
+                      <div className="flex-1 space-y-1">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                  ))}
                 </div>
               )}
               
               {/* Track list */}
               {!isLoadingTracks && albumTracks.length > 0 && (
                 <>
-                  {/* Warning if all tracks exist */}
-                  {existingTrackIds.size === albumTracks.length && (
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                      <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                  {/* Warning if there are failed tracks */}
+                  {failedTrackIds.size > 0 && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                      <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-500 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                          All tracks already exist
+                        <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                          {failedTrackIds.size} track{failedTrackIds.size !== 1 ? 's' : ''} failed to upload
                         </p>
-                        <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                          All tracks from this album are already in the chart.
+                        <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                          Select the failed tracks and click "Retry" to try uploading them again.
                         </p>
                       </div>
                     </div>
@@ -337,25 +525,18 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                   
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
-                      {selectedTrackIds.size} of {albumTracks.length - existingTrackIds.size} new tracks selected
-                      {existingTrackIds.size > 0 && (
-                        <span className="text-muted-foreground ml-1">
-                          ({existingTrackIds.size} already in chart)
-                        </span>
-                      )}
+                      {selectedTrackIds.size} of {albumTracks.length} tracks selected
                     </p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
-                          const nonExistingTrackIds = albumTracks
-                            .filter(track => !existingTrackIds.has(String(track.trackId)))
-                            .map(t => t.trackId);
-                          setSelectedTrackIds(new Set(nonExistingTrackIds));
+                          const allTrackIds = albumTracks.map(t => t.trackId);
+                          setSelectedTrackIds(new Set(allTrackIds));
                         }}
                         className="text-xs text-primary hover:underline"
-                        disabled={isUploading || existingTrackIds.size === albumTracks.length}
+                        disabled={isUploading}
                       >
-                        Select All New
+                        Select All
                       </button>
                       <button
                         onClick={() => setSelectedTrackIds(new Set())}
@@ -369,7 +550,7 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                   
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {albumTracks.map((track) => {
-                      const isExisting = existingTrackIds.has(String(track.trackId));
+                      const isFailed = failedTrackIds.has(track.trackId);
                       const isSelected = selectedTrackIds.has(track.trackId);
                       const duration = Math.floor(track.trackTimeMillis / 1000);
                       const minutes = Math.floor(duration / 60);
@@ -379,11 +560,10 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                         <label
                           key={track.trackId}
                           className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg transition-all",
-                            isExisting && "opacity-50 cursor-not-allowed",
-                            !isExisting && "cursor-pointer",
-                            !isExisting && isSelected && "bg-primary/10 hover:bg-primary/15",
-                            !isExisting && !isSelected && "bg-muted/30 hover:bg-muted/50",
+                            "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer",
+                            isFailed && "border-2 border-red-500/50 bg-red-500/5",
+                            !isFailed && isSelected && "bg-primary/10 hover:bg-primary/15",
+                            !isFailed && !isSelected && "bg-muted/30 hover:bg-muted/50",
                             isUploading && "opacity-60 cursor-not-allowed"
                           )}
                         >
@@ -391,17 +571,14 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleTrackToggle(track.trackId)}
-                            disabled={isUploading || isExisting}
+                            disabled={isUploading}
                             className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30 disabled:cursor-not-allowed"
                           />
                           <div className="flex-shrink-0 w-6 text-sm text-muted-foreground text-center">
                             {track.trackNumber}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "font-medium text-sm truncate",
-                              isExisting && "line-through"
-                            )}>
+                            <p className="font-medium text-sm truncate">
                               {track.trackName}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
@@ -411,12 +588,12 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
                           <div className="flex-shrink-0 text-xs text-muted-foreground">
                             {minutes}:{seconds.toString().padStart(2, '0')}
                           </div>
-                          {isExisting && (
-                            <Badge variant="secondary" className="flex-shrink-0">
-                              Already in chart
+                          {isFailed && (
+                            <Badge variant="destructive" className="flex-shrink-0">
+                              Failed - Retry
                             </Badge>
                           )}
-                          {!isExisting && isSelected && (
+                          {!isFailed && isSelected && (
                             <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
                           )}
                         </label>
@@ -440,26 +617,92 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
         {/* Footer - Upload button */}
         {selectedAlbum && !isLoadingTracks && albumTracks.length > 0 && (
           <div className="p-5 border-t flex-shrink-0">
-            <button
-              onClick={handleUploadTracks}
-              disabled={selectedTrackIds.size === 0 || isUploading}
-              className={cn(
-                "w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2",
-                (selectedTrackIds.size === 0 || isUploading) && "opacity-70 cursor-not-allowed"
-              )}
-            >
-              {isUploading ? (
-                <>
+            {isUploading ? (
+              <div className="flex gap-2">
+                <button
+                  disabled
+                  className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg font-medium shadow-sm opacity-70 cursor-not-allowed flex items-center justify-center gap-2"
+                >
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Uploading Tracks...
-                </>
-              ) : (
-                `Upload ${selectedTrackIds.size} Selected Track${selectedTrackIds.size !== 1 ? 's' : ''}`
-              )}
-            </button>
+                </button>
+                <button
+                  onClick={handleCancelUpload}
+                  className="px-6 bg-destructive text-destructive-foreground py-3 rounded-lg font-medium shadow-sm hover:opacity-90 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleUploadTracks}
+                disabled={selectedTrackIds.size === 0}
+                className={cn(
+                  "w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2",
+                  selectedTrackIds.size === 0 && "opacity-70 cursor-not-allowed"
+                )}
+              >
+                {uploadAttempted && failedTrackIds.size > 0 ? (
+                  `Retry ${selectedTrackIds.size} Failed Track${selectedTrackIds.size !== 1 ? 's' : ''}`
+                ) : (
+                  `Upload ${selectedTrackIds.size} Selected Track${selectedTrackIds.size !== 1 ? 's' : ''}`
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {/* Large Album Confirmation Dialog */}
+      <AlertDialog open={showLargeAlbumConfirm} onOpenChange={setShowLargeAlbumConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upload Large Album?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You're about to upload {selectedTrackIds.size} tracks. This may take a few moments.
+              Do you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLargeAlbumUpload}>
+              Continue Upload
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Album Replacement Confirmation Dialog */}
+      <AlertDialog open={showReplaceConfirm} onOpenChange={setShowReplaceConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+              Replace Existing Album?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                There {existingSongsCount === 1 ? 'is currently' : 'are currently'} <strong>{existingSongsCount} song{existingSongsCount !== 1 ? 's' : ''}</strong> in the chart.
+              </p>
+              <p>
+                Uploading <strong>"{selectedAlbum?.collectionName}"</strong> by <strong>{selectedAlbum?.artistName}</strong> will <span className="text-destructive font-semibold">delete all existing songs</span> and replace them with {selectedTrackIds.size} new track{selectedTrackIds.size !== 1 ? 's' : ''}.
+              </p>
+              <p className="text-muted-foreground text-sm">
+                This action cannot be undone. Do you want to continue?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmReplaceAlbum}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Replace Album
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
