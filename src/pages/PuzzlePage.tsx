@@ -6,9 +6,7 @@ const PuzzlePage = () => {
 
   const handlePuzzleComplete = () => {
     // Navigate back to home after puzzle completion
-    setTimeout(() => {
-      navigate('/');
-    }, 3000); // Give user time to see the completion message
+    navigate('/');
   };
 
   return <TilePuzzle onComplete={handlePuzzleComplete} />;

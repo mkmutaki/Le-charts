@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image as ImageIcon, Play } from 'lucide-react';
+import { X, Image as ImageIcon, Play, ArrowRight } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import {
   TILE_COUNT,
@@ -26,6 +26,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
   const [showReferenceImage, setShowReferenceImage] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [showMaxMovesDialog, setShowMaxMovesDialog] = useState(false);
+  const [hasReachedMaxMoves, setHasReachedMaxMoves] = useState(false);
   const [gameState, setGameState] = useState<TilePuzzleState>({
     tiles: Array.from({ length: TILE_COUNT }, (_, i) => i),
     emptyTileIndex: EMPTY_TILE_VALUE,
@@ -40,6 +41,12 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
     const clickedTileIndex = gameState.tiles.indexOf(tileValue);
     
     if (isAdjacent(clickedTileIndex, gameState.emptyTileIndex)) {
+      // If max moves reached, just show the dialog again without updating counter
+      if (hasReachedMaxMoves) {
+        setShowMaxMovesDialog(true);
+        return;
+      }
+
       setGameState(prev => {
         const newTiles = [...prev.tiles];
         [newTiles[clickedTileIndex], newTiles[prev.emptyTileIndex]] = 
@@ -49,10 +56,13 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         const hasWon = isWon(newTiles);
         
         if (hasWon) {
-          setTimeout(() => onComplete(), 2000);
+          setTimeout(() => onComplete(), 5500);
         } else if (newMoveCount >= 50) {
           // Show max moves dialog after a short delay
-          setTimeout(() => setShowMaxMovesDialog(true), 500);
+          setTimeout(() => {
+            setHasReachedMaxMoves(true);
+            setShowMaxMovesDialog(true);
+          }, 500);
         }
         
         return {
@@ -64,7 +74,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         };
       });
     }
-  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete, gameStarted, showMaxMovesDialog]);
+  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete, gameStarted, showMaxMovesDialog, hasReachedMaxMoves]);
 
   const handleShuffle = useCallback(async () => {
     if (!gameStarted) {
@@ -91,9 +101,8 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
     }));
   }, [gameState.tiles, gameState.emptyTileIndex, gameStarted]);
 
-  const handleMaxMovesVote = () => {
-    setShowMaxMovesDialog(false);
-    setTimeout(() => onComplete(), 500);
+  const handleSkipToVote = () => {
+    onComplete();
   };
 
   if (loading) {
@@ -113,11 +122,13 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
       {/* Navbar overlay */}
       <Navbar />
       
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Album of the day</CardTitle>
-          <p className="text-sm text-muted-foreground">Reassemble the {albumTitle} album cover!</p>
-        </CardHeader>
+      {/* Main content wrapper - centers both card and button */}
+      <div className="flex items-center gap-8">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Album of the day</CardTitle>
+            <p className="text-sm text-muted-foreground">Reassemble the {albumTitle} album cover!</p>
+          </CardHeader>
         
         <CardContent className="space-y-6">
           {/* Game Grid */}
@@ -198,18 +209,58 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
             </div>
           </div>
           
-          {/* Win Message */}
-          {gameState.isWon && (
-            <div className="text-center text-green-600 font-semibold text-lg animate-pulse">
-              🎉 You solved it in {gameState.moveCount} moves! 🎉
-            </div>
-          )}
+          {/* Win Message with progress bar */}
+          <AnimatePresence>
+            {gameState.isWon && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-3"
+              >
+                <div className="text-center text-green-600 font-semibold text-lg">
+                  🎉 You solved it in {gameState.moveCount} moves! 🎉
+                </div>
+                <div className="text-center space-y-2">
+                  <p className="text-xs text-muted-foreground">Sign up to keep track daily</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => {}}
+                  >
+                    Sign up
+                  </Button>
+                </div>
+                {/* Progress bar */}
+                <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-[hsl(212,100%,47%)]"
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 5.5, ease: 'linear' }}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
           <p className="text-xs text-muted-foreground text-center">
             Album Cover: {albumArtist} - {albumTitle}
           </p>
         </CardContent>
       </Card>
+
+        {/* Go ahead and vote button */}
+        <motion.button
+          onClick={handleSkipToVote}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex items-center gap-2 px-6 py-3 rounded-full border-2 border-[hsl(212,100%,47%)] text-foreground font-medium shadow-lg hover:shadow-xl transition-shadow"
+        >
+          Go ahead and vote
+          <ArrowRight className="h-4 w-4" />
+        </motion.button>
+      </div>
 
       {/* Reference Image Modal */}
       <AnimatePresence>
@@ -266,19 +317,23 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
 
       {/* Max Moves Dialog */}
       <Dialog open={showMaxMovesDialog} onOpenChange={setShowMaxMovesDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-center">Game Over</DialogTitle>
             <DialogDescription className="text-center">
               You have run out of moves for the day
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center mt-4">
+          <div className="flex flex-col items-center gap-4 mt-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Sign up to have unlimited moves and track daily scores
+            </p>
             <Button 
-              onClick={handleMaxMovesVote}
-              className="px-8 py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+              variant="outline"
+              onClick={() => {}}
+              className="px-8 py-2"
             >
-              Go ahead and vote
+              Sign up
             </Button>
           </div>
         </DialogContent>
