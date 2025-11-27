@@ -279,11 +279,11 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
         
         // Don't close modal - allow user to retry failed tracks
         if (result.added > 0) {
-          // Partial success - call the callback but keep modal open
+          // Partial success - puzzle settings will be updated by database trigger
           onAlbumUploaded();
         }
       } else if (result.added > 0) {
-        // Full success
+        // Full success - puzzle settings will be automatically updated by database trigger
         onAlbumUploaded();
         onClose();
       } else {
