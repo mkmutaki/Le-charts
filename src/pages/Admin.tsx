@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil, Key, ImageIcon } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil, Key } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AlbumSearchModal } from '@/components/AlbumSearchModal';
 import { EditSongModal } from '@/components/EditSongModal';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
-import { AlbumCoverUploadModal } from '@/components/AlbumCoverUploadModal';
+import { useAdminTimeout } from '@/hooks/useAdminTimeout';
 import { toast } from 'sonner';
 
 const Admin = () => {
@@ -16,12 +16,14 @@ const Admin = () => {
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const [isAlbumCoverUploadOpen, setIsAlbumCoverUploadOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const navigate = useNavigate();
+  
+  // Admin session timeout - automatically logs out after 10 minutes of inactivity
+  useAdminTimeout({ enabled: isAdmin && !isCheckingAdmin });
   
   useEffect(() => {
     const verifyAdmin = async () => {
@@ -156,14 +158,6 @@ const Admin = () => {
           
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsAlbumCoverUploadOpen(true)}
-              className="flex items-center gap-1.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-purple-200 dark:hover:bg-purple-800"
-            >
-              <ImageIcon className="h-4 w-4" />
-              <span>Upload Album Cover</span>
-            </button>
-            
-            <button
               onClick={() => setIsResetPasswordOpen(true)}
               className="flex items-center gap-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-blue-200 dark:hover:bg-blue-800"
             >
@@ -237,11 +231,6 @@ const Admin = () => {
       <ResetPasswordModal
         isOpen={isResetPasswordOpen}
         onClose={() => setIsResetPasswordOpen(false)}
-      />
-
-      <AlbumCoverUploadModal
-        isOpen={isAlbumCoverUploadOpen}
-        onClose={() => setIsAlbumCoverUploadOpen(false)}
       />
     </div>
   );
