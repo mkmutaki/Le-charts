@@ -42,6 +42,7 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
   const [uploadCancelled, setUploadCancelled] = useState(false);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [existingSongsCount, setExistingSongsCount] = useState(0);
+  const [largeAlbumConfirmed, setLargeAlbumConfirmed] = useState(false);
   
   // Debounced search effect
   useEffect(() => {
@@ -87,6 +88,7 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
       setShowLargeAlbumConfirm(false);
       setShowReplaceConfirm(false);
       setExistingSongsCount(0);
+      setLargeAlbumConfirmed(false);
     }
   }, [isOpen]);
 
@@ -182,14 +184,16 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
       return;
     }
     
+    // Check if there are existing songs in the database (do this first to have the count ready)
+    const songsCount = await getSongsCount();
+    
     // Check for large album and show confirmation
-    if (selectedTrackIds.size > 20 && !uploadAttempted) {
+    if (selectedTrackIds.size > 20 && !largeAlbumConfirmed) {
+      // Store the songs count so it's available when large album is confirmed
+      setExistingSongsCount(songsCount);
       setShowLargeAlbumConfirm(true);
       return;
     }
-    
-    // Check if there are existing songs in the database
-    const songsCount = await getSongsCount();
     
     if (songsCount > 0 && !uploadAttempted) {
       // Show replacement confirmation dialog
@@ -315,7 +319,15 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
 
   const confirmLargeAlbumUpload = () => {
     setShowLargeAlbumConfirm(false);
-    // Re-trigger upload
+    setLargeAlbumConfirmed(true);
+    
+    // Check if we need to show the replacement dialog next
+    if (existingSongsCount > 0 && !uploadAttempted) {
+      setShowReplaceConfirm(true);
+      return;
+    }
+    
+    // No existing songs, proceed directly to upload
     handleUploadTracks();
   };
   

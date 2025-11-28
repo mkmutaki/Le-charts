@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Music, Moon, Sun, LayoutDashboard, LogOut, Key, Menu, HelpCircle, Trophy, Settings } from 'lucide-react';
+import { Music, Moon, Sun, LayoutDashboard, LogOut, Key, Menu, HelpCircle, Trophy, Settings, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -103,7 +103,8 @@ export const Navbar = () => {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Left side - Hamburger menu and logo */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-20">
+            <ArrowLeft className="h-6 w-6" />
             {/* <button 
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
               aria-label="Menu"
@@ -179,13 +180,6 @@ export const Navbar = () => {
             {isAdmin && (
               <>
                 {/* Admin Navigation Options */}
-                <button
-                  onClick={() => setIsResetPasswordOpen(true)}
-                  className="hidden md:flex items-center gap-1.5 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors dark:bg-blue-900 dark:text-blue-100 dark:hover:bg-blue-800"
-                >
-                  <Key className="h-4 w-4" />
-                  <span>Reset Password</span>
-                </button>
                 <button
                   onClick={() => navigate('/admin')}
                   className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"

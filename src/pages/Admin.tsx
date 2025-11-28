@@ -150,21 +150,19 @@ const Admin = () => {
               to="/"
               className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Chart</span>
+              <ArrowLeft className="h-6 w-6" />
             </Link>
             <h1 className="text-xl font-semibold">Admin Dashboard</h1>
           </div>
           
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsResetPasswordOpen(true)}
-              className="flex items-center gap-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-blue-200 dark:hover:bg-blue-800"
+              onClick={() => setIsAddSongOpen(true)}
+              className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:opacity-90 transition-all active:scale-95"
             >
-              <Key className="h-4 w-4" />
-              <span>Reset Password</span>
+              <Plus className="h-4 w-4" />
+              <span>Search Albums</span>
             </button>
-            
             <button
               onClick={handleResetVotes}
               className="flex items-center gap-1.5 bg-muted hover:bg-muted/80 text-foreground px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -172,13 +170,12 @@ const Admin = () => {
               <RotateCcw className="h-4 w-4" />
               <span>Reset All Votes</span>
             </button>
-            
             <button
-              onClick={() => setIsAddSongOpen(true)}
-              className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:opacity-90 transition-all active:scale-95"
+              onClick={() => setIsResetPasswordOpen(true)}
+              className="flex items-center gap-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-blue-200 dark:hover:bg-blue-800"
             >
-              <Plus className="h-4 w-4" />
-              <span>Search Albums</span>
+              <Key className="h-4 w-4" />
+              <span>Reset Password</span>
             </button>
           </div>
         </div>

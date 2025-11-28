@@ -114,7 +114,7 @@ const Index = () => {
           <div className="flex flex-row md:items-end justify-between gap-4 mb-6">
             <div>
               <h2 className=" text-3xl md:text-4xl font-bold mb-5">
-                Album: {currentAlbum ? currentAlbum.name : 'No album selected'}
+                Album - {currentAlbum ? currentAlbum.name : 'No album selected'}
               </h2>
               <div className='flex flex-row justify-between text-muted-foreground mt-2 md:space-x-[307px]'>
                 <p className="text-start ml-1">Vote for your top song</p>
