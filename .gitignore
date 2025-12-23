@@ -14,8 +14,6 @@ dist-ssr
 supabase/config.toml
 .env
 
-src/integrations/supabase/client.ts
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
