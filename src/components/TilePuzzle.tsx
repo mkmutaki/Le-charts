@@ -123,7 +123,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
       <Navbar />
       
       {/* Main content wrapper - centers both card and button */}
-      <div className="flex items-center gap-8">
+      <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-44">
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Album of the day</CardTitle>
@@ -255,10 +255,9 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
           onClick={handleSkipToVote}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2 px-6 py-3 rounded-full border-2 border-[hsl(212,100%,47%)] text-foreground font-medium shadow-lg hover:shadow-xl transition-shadow"
-        >
+          className="flex items-center gap-2 px-7 py-3 lg:px-5 rounded-full border-2 border-[hsl(212,100%,47%)] text-foreground font-medium shadow-lg hover:shadow-xl transition-shadow whitespace-nowrap">
           Go ahead and vote
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="h-5 w-5" />
         </motion.button>
       </div>
 

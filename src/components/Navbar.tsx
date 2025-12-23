@@ -103,20 +103,19 @@ export const Navbar = () => {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Left side - Hamburger menu and logo */}
-          <div className="flex items-center gap-20">
-            <ArrowLeft className="h-6 w-6" />
+          <div className="flex items-center">
             {/* <button 
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
               aria-label="Menu"
             >
               <Menu className="h-5 w-5" />
             </button> */}
-            <Link to="/" className="flex items-center gap-1">
+            {/* <Link to="/" className="flex items-center gap-1"> */}
               <img className='w-9 h-9' src="/logo.png" alt="LeCharts" />
-              <h1 className="text-xl font-semibold tracking-tight">
+              <h1 className="text-xl font-semibold tracking-tight mt-1">
                 LeCharts
               </h1>
-            </Link>
+            {/* </Link> */}
           </div>
           
           {/* Right side - Icons and admin controls */}

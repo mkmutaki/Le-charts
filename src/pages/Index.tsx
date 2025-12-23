@@ -117,7 +117,7 @@ const Index = () => {
                 Album - {currentAlbum ? currentAlbum.name : 'No album selected'}
               </h2>
               <div className='flex flex-row justify-between text-muted-foreground mt-2 md:space-x-[307px]'>
-                <p className="text-start ml-1">Vote for your top song</p>
+                <p className="text-start ml-1">Vote for your favorite song</p>
               </div>
             </div>
             
