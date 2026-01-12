@@ -99,7 +99,7 @@ export const SongCard = ({ song, rank }: SongCardProps) => {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
             >
-              Listen on Tiktok <ExternalLink className="h-3 w-3" />
+              Listen on Spotify <ExternalLink className="h-3 w-3" />
             </a>
           )}
         </div>

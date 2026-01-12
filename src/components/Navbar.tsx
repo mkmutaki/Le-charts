@@ -133,14 +133,14 @@ export const Navbar = () => {
                 </DialogTrigger>
                 <DialogContent className="max-w-md text-center">
                   <DialogHeader>
-                    <DialogTitle className='text-center'>Welcome!</DialogTitle>
+                    <DialogTitle className='text-center'>How it works?</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 text-sm leading-relaxed">
                     <p>
-                      Le Charts was conceived to give people the chance to rank their favourite albums and songs against each other, providing charts that you can trust.
+                      Le Charts was conceived to give people the chance to battle out their favourite albums and songs against each other, creating new charts weekly.
                     </p>
                     <p>
-                      But before you can vote, a fun puzzle awaits. Use the "view reference" button to see how the tiles should be arranged.
+                      But before you vote, a puzzle awaits. Correctly rearrange the album cover in the shortest moves possible. Use the "view reference" button to see how the cover should look.
                     </p>
                     <p>
                       Good luck and happy voting!
