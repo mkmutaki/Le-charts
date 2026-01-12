@@ -6,13 +6,13 @@ import { Music, X } from 'lucide-react';
 
 interface WelcomeOverlayProps {
   onDismiss: () => void;
+  onComplete: () => void;
 }
 
-const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
+const WelcomeOverlay = ({ onDismiss, onComplete }: WelcomeOverlayProps) => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(true);
   const [loginButtonState, setLoginButtonState] = useState({ isShaking: false, isFlashing: false });
-  const [gamesButtonState, setGamesButtonState] = useState({ isShaking: false, isFlashing: false });
 
   const handleClose = () => {
     setIsVisible(false);
@@ -27,13 +27,19 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
     }, 300);
   };
 
-  const handleDisabledButtonClick = (buttonType: 'login' | 'games') => {
-    const setButtonState = buttonType === 'login' ? setLoginButtonState : setGamesButtonState;
-    
-    setButtonState({ isShaking: true, isFlashing: true });
+  const handleSkipToVote = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onComplete();
+      onDismiss();
+    }, 300);
+  };
+
+  const handleDisabledButtonClick = (buttonType: 'login') => {
+    setLoginButtonState({ isShaking: true, isFlashing: true });
     
     setTimeout(() => {
-      setButtonState({ isShaking: false, isFlashing: false });
+      setLoginButtonState({ isShaking: false, isFlashing: false });
     }, 600);
   };
 
@@ -60,7 +66,7 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mb-5"
+              className="mb-3"
             >
               <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
                 <img className='h-18 w-18 ml-2' src="/logo.png" alt="" />
@@ -77,11 +83,11 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-1">
                 Le Charts
               </h1>
-              <p className="text-lg text-gray-600 mb-2">
+              <p className="text-lg text-gray-600 mb-1">
                 How many moves will it take?
               </p>
               <p className="text-lg text-gray-600">
-                Discover, vote, and listen to albums daily!
+                Discover, vote, and listen to albums daily.
               </p>
             </motion.div>
 
@@ -97,7 +103,7 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               >
                 <Button
                   onClick={() => handleDisabledButtonClick('login')}
-                  className={`px-16 py-3 text-md font-medium border-2 border-solid rounded-full transition-all duration-200 transform hover:scale-105 ${
+                  className={`px-14 py-3 text-md font-medium border-2 border-solid rounded-full transition-all duration-200 transform hover:scale-105 ${
                     loginButtonState.isFlashing 
                       ? 'bg-red-500 text-white border-red-500' 
                       : 'bg-gray-100 hover:bg-gray-800 hover:text-gray-100 text-black'
@@ -110,29 +116,23 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
 
               <Button
                 onClick={() => handleNavigate('/')}
-                className="px-10 py-3 text-md font-medium bg-gray-100 border-2 border-solid hover:bg-gray-800 hover:text-gray-100 text-black rounded-full transition-all duration-200 transform hover:scale-105"
+                className="px-14 py-3 text-md font-medium bg-gray-100 border-2 border-solid hover:bg-gray-800 hover:text-gray-100 text-black rounded-full transition-all duration-200 transform hover:scale-105"
                 size="lg"
               >
-                Play & Vote
+                Play
               </Button>
 
-              <motion.div
-                animate={gamesButtonState.isShaking ? shakeAnimation : {}}
+              <Button
+                onClick={handleSkipToVote}
+                className="px-14 py-3 text-md font-medium border-2 border-solid rounded-full transition-all duration-200 transform hover:scale-105 bg-gray-100 hover:bg-gray-800 hover:text-gray-100 text-black"
+                size="lg"
               >
-                <Button
-                  onClick={() => handleDisabledButtonClick('games')}
-                  className={`px-4 py-3 text-md font-medium border-2 border-solid rounded-full transition-all duration-200 transform hover:scale-105 ${
-                    gamesButtonState.isFlashing 
-                      ? 'bg-red-500 text-white border-red-500' 
-                      : 'bg-gray-100 hover:bg-gray-800 hover:text-gray-100 text-black'
-                  }`}
-                  size="lg"
-                >
-                  See more games..
-                </Button>
-              </motion.div>
+                Vote
+              </Button>
 
             </motion.div>
+
+
           </div>
         </motion.div>
       )}

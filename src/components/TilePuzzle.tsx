@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image as ImageIcon, Play, ArrowRight } from 'lucide-react';
+import { X, Image as ImageIcon, Play } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import {
   TILE_COUNT,
@@ -57,7 +57,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         
         if (hasWon) {
           setTimeout(() => onComplete(), 5500);
-        } else if (newMoveCount >= 50) {
+        } else if (newMoveCount >= 70) {
           // Show max moves dialog after a short delay
           setTimeout(() => {
             setHasReachedMaxMoves(true);
@@ -100,10 +100,6 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
       isShuffling: false,
     }));
   }, [gameState.tiles, gameState.emptyTileIndex, gameStarted]);
-
-  const handleSkipToVote = () => {
-    onComplete();
-  };
 
   if (loading) {
     return (
@@ -201,11 +197,11 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
             
             <div className={cn(
               "text-lg font-medium",
-              gameState.moveCount >= 40 && gameState.moveCount < 50 && "text-orange-600",
-              gameState.moveCount >= 50 && "text-red-600"
+              gameState.moveCount >= 55 && gameState.moveCount < 70 && "text-orange-600",
+              gameState.moveCount >= 70 && "text-red-600"
             )}>
               Moves: <span className="font-bold">{gameState.moveCount}</span>
-              <span className="text-sm text-muted-foreground ml-1">/50</span>
+              <span className="text-sm text-muted-foreground ml-1">/70</span>
             </div>
           </div>
           
@@ -249,16 +245,6 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
           </p>
         </CardContent>
       </Card>
-
-        {/* Go ahead and vote button */}
-        <motion.button
-          onClick={handleSkipToVote}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2 px-7 py-3 lg:px-5 rounded-full border-2 border-[hsl(212,100%,47%)] text-foreground font-medium shadow-lg hover:shadow-xl transition-shadow whitespace-nowrap">
-          Go ahead and vote
-          <ArrowRight className="h-5 w-5" />
-        </motion.button>
       </div>
 
       {/* Reference Image Modal */}

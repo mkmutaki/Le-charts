@@ -25,21 +25,9 @@ const LoadingFallback = () => (
 );
 
 // Create a component that decides what to show on the home route
-const HomeRoute = () => {
-  const [showPuzzle, setShowPuzzle] = useState(true);
+const HomeRoute = ({ showPuzzle, onPuzzleComplete }: { showPuzzle: boolean; onPuzzleComplete: () => void }) => {
   const { currentUser } = useAuthStore();
   
-  // Reset puzzle state when user becomes unauthenticated
-  useEffect(() => {
-    if (!currentUser) {
-      setShowPuzzle(true);
-    }
-  }, [currentUser]);
-
-  const handlePuzzleComplete = () => {
-    setShowPuzzle(false);
-  };
-
   // If user is authenticated, show Index directly
   if (currentUser) {
     return <Index />;
@@ -51,13 +39,22 @@ const HomeRoute = () => {
   }
 
   // Otherwise show puzzle
-  return <TilePuzzle onComplete={handlePuzzleComplete} />;
+  return <TilePuzzle onComplete={onPuzzleComplete} />;
 };
 
 // Main app content
 const AppContent = () => {
   const location = useLocation();
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(true);
+  const [showPuzzle, setShowPuzzle] = useState(true);
+  const { currentUser } = useAuthStore();
+  
+  // Reset puzzle state when user becomes unauthenticated
+  useEffect(() => {
+    if (!currentUser) {
+      setShowPuzzle(true);
+    }
+  }, [currentUser]);
 
   // Routes where welcome overlay should NOT be displayed
   const excludedRoutes = ['/login', '/admin', '/reset/request', '/auth/confirm'];
@@ -71,13 +68,21 @@ const AppContent = () => {
     setShowWelcomeOverlay(false);
   };
 
+  const handlePuzzleComplete = () => {
+    setShowPuzzle(false);
+  };
+
+  const handleSkipToVote = () => {
+    setShowPuzzle(false);
+  };
+
   return (
     <>
       <ErrorBoundary>
         <SupabaseListener />
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
-            <Route path="/" element={<HomeRoute />} />
+            <Route path="/" element={<HomeRoute showPuzzle={showPuzzle} onPuzzleComplete={handlePuzzleComplete} />} />
             <Route 
               path="/admin/*" 
               element={
@@ -105,7 +110,7 @@ const AppContent = () => {
 
       {/* Welcome overlay - highest priority, shows first on appropriate pages */}
       {showWelcomeOverlay && shouldShowOverlay && (
-        <WelcomeOverlay onDismiss={handleWelcomeOverlayDismiss} />
+        <WelcomeOverlay onDismiss={handleWelcomeOverlayDismiss} onComplete={handleSkipToVote} />
       )}
     </>
   );
