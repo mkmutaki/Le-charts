@@ -16,7 +16,7 @@ import {
   shuffleTiles,
 } from '@/lib/utils';
 import { usePuzzleSettings } from '@/hooks/usePuzzleSettings';
-import { savePuzzleState, loadPuzzleState } from '@/lib/puzzleState';
+import { savePuzzleState, loadPuzzleStateWithMeta } from '@/lib/puzzleState';
 import type { TilePuzzleState } from '@/lib/types';
 
 interface TilePuzzleProps {
@@ -28,6 +28,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
   const { settings, loading } = usePuzzleSettings();
   const [showReferenceImage, setShowReferenceImage] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [showMaxMovesDialog, setShowMaxMovesDialog] = useState(false);
   const [hasReachedMaxMoves, setHasReachedMaxMoves] = useState(false);
   const [stateLoaded, setStateLoaded] = useState(false);
@@ -42,7 +43,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
   // Load saved state on mount when settings are available
   useEffect(() => {
     if (!loading && settings?.current_album_cover_url && !stateLoaded) {
-      const savedState = loadPuzzleState(settings.current_album_cover_url);
+      const { state: savedState, meta } = loadPuzzleStateWithMeta(settings.current_album_cover_url);
       
       if (savedState) {
         setGameState({
@@ -54,16 +55,18 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         });
         setGameStarted(savedState.gameStarted);
         setHasReachedMaxMoves(savedState.hasReachedMaxMoves);
-        
-        // Show appropriate dialog based on saved state
-        if (savedState.hasReachedMaxMoves && !savedState.isWon) {
-          setShowMaxMovesDialog(true);
-        }
-        
-        // If user won, trigger completion flow
-        if (savedState.isWon) {
-          setTimeout(() => onComplete(), 5500);
-        }
+      }
+
+      setShowResumePrompt(meta.canResume);
+
+      // Show appropriate dialog based on saved state/meta
+      if (meta.isGameOver) {
+        setShowMaxMovesDialog(true);
+      }
+      
+      // If user won, trigger completion flow
+      if (savedState?.isWon) {
+        setTimeout(() => onComplete(), 5500);
       }
       
       setStateLoaded(true);
@@ -87,8 +90,15 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
     }
   }, [gameState, hasReachedMaxMoves, gameStarted, stateLoaded, settings]);
 
+  // Ensure the Game Over dialog opens automatically when returning to a maxed-out state
+  useEffect(() => {
+    if (stateLoaded && hasReachedMaxMoves && !gameState.isWon) {
+      setShowMaxMovesDialog(true);
+    }
+  }, [stateLoaded, hasReachedMaxMoves, gameState.isWon]);
+
   const handleTileClick = useCallback((tileValue: number) => {
-    if (gameState.isShuffling || gameState.isWon || !gameStarted || showMaxMovesDialog) return;
+    if (gameState.isShuffling || gameState.isWon || !gameStarted || showMaxMovesDialog || showResumePrompt) return;
 
     const clickedTileIndex = gameState.tiles.indexOf(tileValue);
     
@@ -126,7 +136,12 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         };
       });
     }
-  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete, gameStarted, showMaxMovesDialog, hasReachedMaxMoves]);
+  }, [gameState.isShuffling, gameState.isWon, gameState.tiles, gameState.emptyTileIndex, onComplete, gameStarted, showMaxMovesDialog, hasReachedMaxMoves, showResumePrompt]);
+
+  const handleResume = () => {
+    setShowResumePrompt(false);
+    setGameStarted(true);
+  };
 
   const handleShuffle = useCallback(async () => {
     if (!gameStarted) {
@@ -136,6 +151,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
     // Reset relevant states when shuffling
     setHasReachedMaxMoves(false);
     setShowMaxMovesDialog(false);
+    setShowResumePrompt(false);
     
     setGameState(prev => ({
       ...prev,
@@ -213,17 +229,17 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
               );
             })}
             
-            {/* Start Button Overlay */}
-            {!gameStarted && (
+            {/* Start/Resume Button Overlay */}
+            {(!gameStarted || showResumePrompt) && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-10">
                 <motion.button
-                  onClick={handleShuffle}
+                  onClick={showResumePrompt ? handleResume : handleShuffle}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-primary text-primary-foreground font-medium px-6 py-3 rounded-full shadow-lg flex items-center gap-2"
                 >
                   <Play className="h-4 w-4" />
-                  Click to Start
+                  {showResumePrompt ? 'Continue' : 'Click to Start'}
                 </motion.button>
               </div>
             )}

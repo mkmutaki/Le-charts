@@ -56,7 +56,8 @@ const WelcomeOverlay = ({ onDismiss, onComplete }: WelcomeOverlayProps) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 bg-[#E3E3E1] flex flex-col items-center justify-center z-[100] p-8"
+          className="fixed inset-0 bg-[#E3E3E1] flex flex-col items-center justify-center z-[120] p-8 pointer-events-auto"
+          onPointerDownCapture={(e) => e.stopPropagation()}
         >
 
           {/* Main content container */}

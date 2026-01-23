@@ -15,6 +15,16 @@ interface PuzzleStateData {
   albumCoverUrl: string; // Track which album this state belongs to
 }
 
+export type PersistedPuzzleState = Omit<PuzzleStateData, 'lastPlayedDate' | 'albumCoverUrl'>;
+
+export type PuzzleStateStatus = 'none' | 'fresh' | 'in-progress' | 'won' | 'game-over';
+
+export interface PuzzleStateMeta {
+  status: PuzzleStateStatus;
+  canResume: boolean;
+  isGameOver: boolean;
+}
+
 const STORAGE_KEY = 'le-charts-puzzle-state';
 
 /**
@@ -22,7 +32,7 @@ const STORAGE_KEY = 'le-charts-puzzle-state';
  * Includes date and album URL to detect when reset is needed
  */
 export const savePuzzleState = (
-  state: Omit<PuzzleStateData, 'lastPlayedDate'>,
+  state: Omit<PuzzleStateData, 'lastPlayedDate' | 'albumCoverUrl'>,
   albumCoverUrl: string
 ) => {
   const stateWithDate: PuzzleStateData = {
@@ -45,7 +55,7 @@ export const savePuzzleState = (
  * - It's a new day
  * - The album has changed
  */
-export const loadPuzzleState = (currentAlbumUrl: string): Omit<PuzzleStateData, 'lastPlayedDate' | 'albumCoverUrl'> | null => {
+export const loadPuzzleState = (currentAlbumUrl: string): PersistedPuzzleState | null => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
@@ -78,6 +88,45 @@ export const loadPuzzleState = (currentAlbumUrl: string): Omit<PuzzleStateData, 
     console.error('Failed to load puzzle state:', error);
     return null;
   }
+};
+
+/**
+ * Load puzzle state and return meta information about the user's progress.
+ * Useful for deciding whether to show a resume/continue CTA or the game-over dialog on page load.
+ */
+export const loadPuzzleStateWithMeta = (currentAlbumUrl: string): {
+  state: PersistedPuzzleState | null;
+  meta: PuzzleStateMeta;
+} => {
+  const defaultMeta: PuzzleStateMeta = {
+    status: 'none',
+    canResume: false,
+    isGameOver: false,
+  };
+
+  const state = loadPuzzleState(currentAlbumUrl);
+
+  if (!state) {
+    return { state: null, meta: defaultMeta };
+  }
+
+  const isGameOver = state.hasReachedMaxMoves && !state.isWon;
+  const status: PuzzleStateStatus = state.isWon
+    ? 'won'
+    : isGameOver
+      ? 'game-over'
+      : state.gameStarted
+        ? 'in-progress'
+        : 'fresh';
+
+  return {
+    state,
+    meta: {
+      status,
+      canResume: status === 'in-progress' && (state.moveCount > 0 || state.gameStarted),
+      isGameOver,
+    },
+  };
 };
 
 /**
