@@ -27,7 +27,7 @@ interface SongState extends BaseState {
   songs: Song[];
   isLoading: boolean;
   currentAlbum: { name: string; artist: string } | null;
-  fetchSongs: () => Promise<void>;
+  fetchSongs: (options?: { force?: boolean }) => Promise<void>;
   addSong: (songData: SongFormData, itunesTrackId?: string) => Promise<void>;
   addAlbumTracks: (tracks: AlbumTrackData[]) => Promise<UploadResult>;
   checkExistingTracks: (trackIds: string[]) => Promise<Set<string>>;
@@ -48,10 +48,11 @@ export const useSongStore = createBaseStore<SongState>(
       set({ currentAlbum: album });
     },
     
-    fetchSongs: async () => {
+    fetchSongs: async (options = {}) => {
+      const { force = false } = options;
       // Add timestamp-based deduplication
       const now = Date.now();
-      if (now - lastFetchTimestamp.current < MIN_FETCH_INTERVAL) {
+      if (!force && now - lastFetchTimestamp.current < MIN_FETCH_INTERVAL) {
         console.log('Skipping fetchSongs - too soon since last fetch');
         return;
       }
@@ -70,7 +71,6 @@ export const useSongStore = createBaseStore<SongState>(
             *,
             song_votes:song_votes(song_id, device_id)
           `)
-          .order('votes', { ascending: false })
           .order('updated_at', { ascending: false });
           
         if (error) {
@@ -78,18 +78,28 @@ export const useSongStore = createBaseStore<SongState>(
           throw error;
         }
         
-        const songs = songsWithVotes.map(songData => {
-          const song = songData;
-          const votes = songData.song_votes || [];
-          
-          const songObj = convertSupabaseSong(song);
-          songObj.votedBy = votes.map(vote => vote.device_id) || [];
-          
-          // Always use the server's vote count to ensure consistency
-          songObj.votes = song.votes || 0;
-          
-          return songObj;
-        });
+        const songs = songsWithVotes
+          .map(songData => {
+            const votes = songData.song_votes || [];
+            const voteCount = votes.length;
+            
+            const songObj = convertSupabaseSong(songData);
+            songObj.votedBy = votes.map(vote => vote.device_id) || [];
+            
+            // Use the live vote table as the source of truth
+            songObj.votes = voteCount > 0 ? voteCount : songData.votes || 0;
+            // Track updated_at for sorting fallback
+            songObj.updatedAt = songData.updated_at || songData.created_at;
+            
+            return songObj;
+          })
+          // Ensure client-side ordering by votes then recency
+          .sort((a, b) => {
+            if (b.votes !== a.votes) return b.votes - a.votes;
+            const aUpdated = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const bUpdated = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            return bUpdated - aUpdated;
+          });
         
         set({ songs, isLoading: false });
       } catch (error) {

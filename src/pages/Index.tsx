@@ -31,7 +31,7 @@ const Index = () => {
       setIsLoading(true);
       
       // Fetch fresh data
-      await fetchSongs();
+  await fetchSongs({ force: true });
       
       // Check for user votes
       await getUserVotedSong();
@@ -53,7 +53,7 @@ const Index = () => {
     const loadData = async () => {
       if (songs.length === 0 && !hasFetchedRef.current) {
         hasFetchedRef.current = true;
-        await fetchSongs();
+  await fetchSongs();
       } else {
         // If we already have songs, just update loading state
         setIsLoading(false);
@@ -76,7 +76,7 @@ const Index = () => {
     // Set up regular refresh interval to keep vote counts in sync across devices
     if (!refreshIntervalRef.current) {
       refreshIntervalRef.current = window.setInterval(() => {
-        fetchSongs();
+  fetchSongs();
       }, 30000); // Refresh every 30 seconds
     }
     

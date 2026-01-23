@@ -7,6 +7,7 @@ export interface Song {
   votes: number;
   addedAt: Date;
   votedBy: string[]; // Array of user IDs who voted for this song
+  updatedAt?: string;
   albumName?: string;
   albumId?: string;
   itunesTrackId?: string;

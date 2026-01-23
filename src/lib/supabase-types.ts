@@ -20,6 +20,7 @@ export const convertSupabaseSong = (song: SupabaseSong): Song => {
     songUrl: song.song_url || '',
     votes: song.votes || 0,
     addedAt: new Date(song.created_at),
+    updatedAt: song.updated_at || song.created_at,
     votedBy: [], // This will be populated from the song_votes table
     ...(song.album_name && { albumName: song.album_name }),
     ...(song.album_id && { albumId: song.album_id }),
