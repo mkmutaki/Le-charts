@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +16,7 @@ import {
   shuffleTiles,
 } from '@/lib/utils';
 import { usePuzzleSettings } from '@/hooks/usePuzzleSettings';
+import { savePuzzleState, loadPuzzleState } from '@/lib/puzzleState';
 import type { TilePuzzleState } from '@/lib/types';
 
 interface TilePuzzleProps {
@@ -22,11 +24,13 @@ interface TilePuzzleProps {
 }
 
 const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
+  const navigate = useNavigate();
   const { settings, loading } = usePuzzleSettings();
   const [showReferenceImage, setShowReferenceImage] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [showMaxMovesDialog, setShowMaxMovesDialog] = useState(false);
   const [hasReachedMaxMoves, setHasReachedMaxMoves] = useState(false);
+  const [stateLoaded, setStateLoaded] = useState(false);
   const [gameState, setGameState] = useState<TilePuzzleState>({
     tiles: Array.from({ length: TILE_COUNT }, (_, i) => i),
     emptyTileIndex: EMPTY_TILE_VALUE,
@@ -34,6 +38,54 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
     isWon: false,
     isShuffling: false,
   });
+
+  // Load saved state on mount when settings are available
+  useEffect(() => {
+    if (!loading && settings?.current_album_cover_url && !stateLoaded) {
+      const savedState = loadPuzzleState(settings.current_album_cover_url);
+      
+      if (savedState) {
+        setGameState({
+          tiles: savedState.tiles,
+          emptyTileIndex: savedState.emptyTileIndex,
+          moveCount: savedState.moveCount,
+          isWon: savedState.isWon,
+          isShuffling: false,
+        });
+        setGameStarted(savedState.gameStarted);
+        setHasReachedMaxMoves(savedState.hasReachedMaxMoves);
+        
+        // Show appropriate dialog based on saved state
+        if (savedState.hasReachedMaxMoves && !savedState.isWon) {
+          setShowMaxMovesDialog(true);
+        }
+        
+        // If user won, trigger completion flow
+        if (savedState.isWon) {
+          setTimeout(() => onComplete(), 5500);
+        }
+      }
+      
+      setStateLoaded(true);
+    }
+  }, [loading, settings, stateLoaded, onComplete]);
+
+  // Save state whenever it changes (but only after initial load)
+  useEffect(() => {
+    if (stateLoaded && gameStarted && settings?.current_album_cover_url) {
+      savePuzzleState(
+        {
+          moveCount: gameState.moveCount,
+          hasReachedMaxMoves,
+          isWon: gameState.isWon,
+          tiles: gameState.tiles,
+          emptyTileIndex: gameState.emptyTileIndex,
+          gameStarted,
+        },
+        settings.current_album_cover_url
+      );
+    }
+  }, [gameState, hasReachedMaxMoves, gameStarted, stateLoaded, settings]);
 
   const handleTileClick = useCallback((tileValue: number) => {
     if (gameState.isShuffling || gameState.isWon || !gameStarted || showMaxMovesDialog) return;
@@ -80,6 +132,10 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
     if (!gameStarted) {
       setGameStarted(true);
     }
+    
+    // Reset relevant states when shuffling
+    setHasReachedMaxMoves(false);
+    setShowMaxMovesDialog(false);
     
     setGameState(prev => ({
       ...prev,
@@ -222,7 +278,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
                     variant="outline" 
                     size="sm"
                     className="text-xs"
-                    onClick={() => {}}
+                    onClick={() => navigate('/login')}
                   >
                     Sign up
                   </Button>
@@ -315,7 +371,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
             </p>
             <Button 
               variant="outline"
-              onClick={() => {}}
+              onClick={() => navigate('/login')}
               className="px-8 py-2"
             >
               Sign up
