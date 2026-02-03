@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil, Key } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil, Key, Calendar } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { useSongStore, useVotingStore, useAuthStore } from '@/lib/store';
+import { useSongStore, useVotingStore, useAuthStore, useScheduleStore } from '@/lib/store';
 import { Song } from '@/lib/types';
 import { AlbumSearchModal } from '@/components/AlbumSearchModal';
 import { EditSongModal } from '@/components/EditSongModal';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
+import { ScheduleAlbumModal } from '@/components/ScheduleAlbumModal';
+import { ScheduleListSection } from '@/components/ScheduleListSection';
+import { EditScheduleModal } from '@/components/EditScheduleModal';
+import { ScheduledAlbum } from '@/lib/services/scheduledAlbumService';
 import { useAdminTimeout } from '@/hooks/useAdminTimeout';
 import { toast } from 'sonner';
 
@@ -13,10 +17,14 @@ const Admin = () => {
   const { songs, fetchSongs, deleteSong } = useSongStore();
   const { resetVotes } = useVotingStore();
   const { currentUser, checkAdminStatus } = useAuthStore();
+  const { scheduledAlbums, fetchScheduledAlbums } = useScheduleStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduledAlbum | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
@@ -54,13 +62,13 @@ const Admin = () => {
     const loadSongs = async () => {
       if (!isCheckingAdmin && isAdmin) {
         setIsLoading(true);
-        await fetchSongs();
+        await Promise.all([fetchSongs(), fetchScheduledAlbums()]);
         setIsLoading(false);
       }
     };
     
     loadSongs();
-  }, [isCheckingAdmin, isAdmin, fetchSongs]);
+  }, [isCheckingAdmin, isAdmin, fetchSongs, fetchScheduledAlbums]);
   
   if (!currentUser) {
     return <Navigate to="/login" replace />;
@@ -164,6 +172,13 @@ const Admin = () => {
               <span>Search Albums</span>
             </button>
             <button
+              onClick={() => setIsScheduleModalOpen(true)}
+              className="flex items-center gap-1.5 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:opacity-90 transition-all active:scale-95"
+            >
+              <Calendar className="h-4 w-4" />
+              <span>Schedule Album</span>
+            </button>
+            <button
               onClick={handleResetVotes}
               className="flex items-center gap-1.5 bg-muted hover:bg-muted/80 text-foreground px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
@@ -181,7 +196,18 @@ const Admin = () => {
         </div>
       </header>
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        {/* Scheduled Albums Section */}
+        <div className="bg-card rounded-xl shadow-sm border overflow-hidden p-6">
+          <ScheduleListSection 
+            onEditSchedule={(schedule) => {
+              setSelectedSchedule(schedule);
+              setIsEditScheduleModalOpen(true);
+            }}
+          />
+        </div>
+        
+        {/* Manage Songs Section */}
         <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
           <div className="px-6 py-4 border-b bg-muted/40">
             <h2 className="font-semibold">Manage Songs</h2>
@@ -228,6 +254,22 @@ const Admin = () => {
       <ResetPasswordModal
         isOpen={isResetPasswordOpen}
         onClose={() => setIsResetPasswordOpen(false)}
+      />
+
+      <ScheduleAlbumModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onScheduled={fetchScheduledAlbums}
+      />
+
+      <EditScheduleModal
+        isOpen={isEditScheduleModalOpen}
+        schedule={selectedSchedule}
+        onClose={() => {
+          setIsEditScheduleModalOpen(false);
+          setSelectedSchedule(null);
+        }}
+        onUpdated={fetchScheduledAlbums}
       />
     </div>
   );

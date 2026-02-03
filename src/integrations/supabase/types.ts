@@ -89,6 +89,106 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_albums: {
+        Row: {
+          id: string
+          spotify_album_id: string
+          album_name: string
+          artist_name: string
+          artwork_url: string
+          track_count: number
+          scheduled_date: string
+          status: 'pending' | 'completed'
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          spotify_album_id: string
+          album_name: string
+          artist_name: string
+          artwork_url: string
+          track_count: number
+          scheduled_date: string
+          status?: 'pending' | 'completed'
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          spotify_album_id?: string
+          album_name?: string
+          artist_name?: string
+          artwork_url?: string
+          track_count?: number
+          scheduled_date?: string
+          status?: 'pending' | 'completed'
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_albums_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_album_tracks: {
+        Row: {
+          id: string
+          scheduled_album_id: string
+          spotify_track_id: string
+          track_name: string
+          artist_name: string
+          track_number: number
+          duration_ms: number | null
+          artwork_url: string | null
+          preview_url: string | null
+          spotify_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          scheduled_album_id: string
+          spotify_track_id: string
+          track_name: string
+          artist_name: string
+          track_number: number
+          duration_ms?: number | null
+          artwork_url?: string | null
+          preview_url?: string | null
+          spotify_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          scheduled_album_id?: string
+          spotify_track_id?: string
+          track_name?: string
+          artist_name?: string
+          track_number?: number
+          duration_ms?: number | null
+          artwork_url?: string | null
+          preview_url?: string | null
+          spotify_url?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_album_tracks_scheduled_album_id_fkey"
+            columns: ["scheduled_album_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_albums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       song_votes: {
         Row: {
           device_id: string
@@ -97,14 +197,18 @@ export type Database = {
           song_id: number
           vote_date: string | null
           voted_at: string | null
+          scheduled_date: string | null
+          scheduled_track_id: string | null
         }
         Insert: {
           device_id: string
           id?: number
           ip_address?: string | null
-          song_id: number
+          song_id?: number
           vote_date?: string | null
           voted_at?: string | null
+          scheduled_date?: string | null
+          scheduled_track_id?: string | null
         }
         Update: {
           device_id?: string
@@ -113,6 +217,8 @@ export type Database = {
           song_id?: number
           vote_date?: string | null
           voted_at?: string | null
+          scheduled_date?: string | null
+          scheduled_track_id?: string | null
         }
         Relationships: [
           {
@@ -120,6 +226,13 @@ export type Database = {
             columns: ["song_id"]
             isOneToOne: false
             referencedRelation: "LeSongs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "song_votes_scheduled_track_id_fkey"
+            columns: ["scheduled_track_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_album_tracks"
             referencedColumns: ["id"]
           },
         ]
@@ -151,9 +264,20 @@ export type Database = {
         Args: { x: number }
         Returns: number
       }
+      get_album_for_date: {
+        Args: { target_date: string }
+        Returns: Json | null
+      }
       get_public_url: {
         Args: { bucket: string; path: string }
         Returns: string
+      }
+      get_scheduled_track_votes: {
+        Args: { p_scheduled_date: string }
+        Returns: {
+          track_id: string
+          vote_count: number
+        }[]
       }
       get_song_votes: {
         Args: Record<PropertyKey, never>

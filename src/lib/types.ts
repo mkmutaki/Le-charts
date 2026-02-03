@@ -15,6 +15,22 @@ export interface Song {
   trackDurationMs?: number;
 }
 
+// New type for scheduled album tracks
+export interface ScheduledSong {
+  id: string; // UUID from scheduled_album_tracks
+  scheduledAlbumId: string;
+  spotifyTrackId: string;
+  trackName: string;
+  artistName: string;
+  trackNumber: number;
+  durationMs: number | null;
+  artworkUrl: string | null;
+  previewUrl: string | null;
+  spotifyUrl: string | null;
+  votes: number;
+  scheduledDate: string;
+}
+
 export interface SongFormData {
   title: string;
   artist: string;
