@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Search, Loader2, Music, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSongStore, useVotingStore } from '@/lib/store';
+import { useSongStore, useVotingStore, useScheduleStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { searchAlbums, getAlbumTracks, ITunesAlbum, ITunesTrack } from '@/lib/services/spotifyService';
+import { 
+  convertAlbumToScheduleData, 
+  convertTracksToScheduleData,
+  checkDateAvailability 
+} from '@/lib/services/scheduledAlbumService';
+import { getLocalDateString } from '@/lib/dateUtils';
+import { updatePuzzleSettingsFromAlbum } from '@/hooks/usePuzzleSettings';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -24,7 +31,8 @@ interface AlbumSearchModalProps {
 }
 
 export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSearchModalProps) => {
-  const { addAlbumTracks, checkExistingTracks, setCurrentAlbum, currentUser, checkIsAdmin, getSongsCount, deleteAllSongs } = useSongStore();
+  const { setCurrentAlbum, currentUser, checkIsAdmin, fetchScheduledSongs } = useSongStore();
+  const { scheduleAlbum, fetchScheduledAlbums } = useScheduleStore();
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
@@ -184,20 +192,21 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
       return;
     }
     
-    // Check if there are existing songs in the database (do this first to have the count ready)
-    const songsCount = await getSongsCount();
+    const today = getLocalDateString();
     
     // Check for large album and show confirmation
     if (selectedTrackIds.size > 20 && !largeAlbumConfirmed) {
-      // Store the songs count so it's available when large album is confirmed
-      setExistingSongsCount(songsCount);
+      // Check if there's an existing album scheduled for today
+      const existingAlbum = await checkDateAvailability(today);
+      setExistingSongsCount(existingAlbum ? existingAlbum.track_count : 0);
       setShowLargeAlbumConfirm(true);
       return;
     }
     
-    if (songsCount > 0 && !uploadAttempted) {
-      // Show replacement confirmation dialog
-      setExistingSongsCount(songsCount);
+    // Check if there's an existing album scheduled for today
+    const existingAlbum = await checkDateAvailability(today);
+    if (existingAlbum && !uploadAttempted) {
+      setExistingSongsCount(existingAlbum.track_count);
       setShowReplaceConfirm(true);
       return;
     }
@@ -207,34 +216,11 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
     const selectedTracks = albumTracks.filter(track => selectedTrackIds.has(track.trackId));
     
     try {
-      // Set the current album in the store before uploading tracks
+      // Set the current album in the store
       setCurrentAlbum({
         name: selectedAlbum.collectionName,
         artist: selectedAlbum.artistName
       });
-      
-      // Delete all existing songs if there were any
-      if (songsCount > 0) {
-        console.log(`Deleting ${songsCount} existing songs and clearing all votes...`);
-        await deleteAllSongs();
-        
-        // Clear the local voting state since all votes were deleted
-        useVotingStore.setState({ votedSongId: null });
-        
-        toast.success(`Deleted ${songsCount} existing song${songsCount !== 1 ? 's' : ''} and cleared all votes`);
-      }
-      
-      // Prepare track data with iTunes track IDs
-      const tracksToUpload = selectedTracks.map(track => ({
-        title: track.trackName,
-        artist: track.artistName,
-        coverUrl: track.artworkUrl600 || track.artworkUrl100,
-        songUrl: track.trackViewUrl,
-        itunesTrackId: String(track.trackId),
-        albumName: track.collectionName,
-        trackNumber: track.trackNumber,
-        trackDurationMs: track.trackTimeMillis,
-      }));
       
       // Check if cancelled
       if (uploadCancelled) {
@@ -242,8 +228,15 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
         return;
       }
       
-      // Use the batch upload function with error tracking
-      const result = await addAlbumTracks(tracksToUpload);
+      // Convert to schedule data format
+      const albumData = convertAlbumToScheduleData(selectedAlbum);
+      // Override track count with selected tracks count
+      albumData.trackCount = selectedTracks.length;
+      
+      const trackData = convertTracksToScheduleData(selectedTracks);
+      
+      // Schedule the album for today (this will replace any existing album)
+      const result = await scheduleAlbum(albumData, trackData, today, true);
       
       // Check if cancelled after upload
       if (uploadCancelled) {
@@ -251,49 +244,36 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
         return;
       }
       
+      if (!result.success) {
+        toast.error(result.error || 'Failed to upload album');
+        return;
+      }
+      
       setUploadAttempted(true);
       
-      // If there were failures, mark failed tracks and update UI
-      if (result.failed > 0 && result.failedTracks) {
-        const failedIds = new Set<number>();
-        
-        // Map failed tracks back to their IDs
-        result.failedTracks.forEach(failedTrack => {
-          const track = albumTracks.find(t => 
-            t.trackName === failedTrack.title && 
-            t.artistName === failedTrack.artist
-          );
-          if (track) {
-            failedIds.add(track.trackId);
-          }
-        });
-        
-        setFailedTrackIds(failedIds);
-        
-        // Deselect successfully uploaded tracks
-        const newSelectedIds = new Set(selectedTrackIds);
-        selectedTracks.forEach(track => {
-          if (!failedIds.has(track.trackId)) {
-            newSelectedIds.delete(track.trackId);
-            // Mark as existing so it shows as "already in chart"
-            setExistingTrackIds(prev => new Set([...prev, String(track.trackId)]));
-          }
-        });
-        setSelectedTrackIds(newSelectedIds);
-        
-        // Don't close modal - allow user to retry failed tracks
-        if (result.added > 0) {
-          // Partial success - puzzle settings will be updated by database trigger
-          onAlbumUploaded();
-        }
-      } else if (result.added > 0) {
-        // Full success - puzzle settings will be automatically updated by database trigger
-        onAlbumUploaded();
-        onClose();
-      } else {
-        // No tracks added - close modal
-        onClose();
-      }
+      // Update puzzle settings with the new album cover
+      await updatePuzzleSettingsFromAlbum(
+        selectedAlbum.artworkUrl600 || selectedAlbum.artworkUrl100,
+        selectedAlbum.collectionName,
+        selectedAlbum.artistName
+      );
+      
+      // Clear voting state for new album
+      useVotingStore.setState({ 
+        votedScheduledTrackId: null,
+        currentVoteDate: today 
+      });
+      
+      // Refresh scheduled albums list and scheduled songs
+      await Promise.all([
+        fetchScheduledAlbums(),
+        fetchScheduledSongs(today, { force: true })
+      ]);
+      
+      toast.success(`Album uploaded! ${selectedTracks.length} track${selectedTracks.length !== 1 ? 's' : ''} added for today`);
+      onAlbumUploaded();
+      onClose();
+      
     } catch (error) {
       console.error('Error uploading tracks:', error);
       if (error instanceof Error) {
@@ -317,17 +297,22 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
     toast.info('Cancelling upload...');
   };
 
-  const confirmLargeAlbumUpload = () => {
+  const confirmLargeAlbumUpload = async () => {
     setShowLargeAlbumConfirm(false);
     setLargeAlbumConfirmed(true);
     
+    // Check if there's an existing album scheduled for today
+    const today = getLocalDateString();
+    const existingAlbum = await checkDateAvailability(today);
+    
     // Check if we need to show the replacement dialog next
-    if (existingSongsCount > 0 && !uploadAttempted) {
+    if (existingAlbum && !uploadAttempted) {
+      setExistingSongsCount(existingAlbum.track_count);
       setShowReplaceConfirm(true);
       return;
     }
     
-    // No existing songs, proceed directly to upload
+    // No existing album, proceed directly to upload
     handleUploadTracks();
   };
   
@@ -690,17 +675,17 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
-              Replace Existing Album?
+              Replace Today's Album?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                There {existingSongsCount === 1 ? 'is currently' : 'are currently'} <strong>{existingSongsCount} song{existingSongsCount !== 1 ? 's' : ''}</strong> in the chart.
+                There is already an album scheduled for today with <strong>{existingSongsCount} track{existingSongsCount !== 1 ? 's' : ''}</strong>.
               </p>
               <p>
-                Uploading <strong>"{selectedAlbum?.collectionName}"</strong> by <strong>{selectedAlbum?.artistName}</strong> will <span className="text-destructive font-semibold">delete all existing songs</span> and replace them with {selectedTrackIds.size} new track{selectedTrackIds.size !== 1 ? 's' : ''}.
+                Uploading <strong>"{selectedAlbum?.collectionName}"</strong> by <strong>{selectedAlbum?.artistName}</strong> will <span className="text-destructive font-semibold">replace today's album</span> with {selectedTrackIds.size} new track{selectedTrackIds.size !== 1 ? 's' : ''}.
               </p>
               <p className="text-muted-foreground text-sm">
-                This action cannot be undone. Do you want to continue?
+                All votes for today will be cleared. Do you want to continue?
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>

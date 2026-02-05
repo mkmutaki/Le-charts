@@ -1,34 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Pencil, Key, Calendar } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Key, Calendar, Music } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore, useScheduleStore } from '@/lib/store';
-import { Song } from '@/lib/types';
+import { ScheduledSong } from '@/lib/types';
 import { AlbumSearchModal } from '@/components/AlbumSearchModal';
-import { EditSongModal } from '@/components/EditSongModal';
 import { ResetPasswordModal } from '@/components/ResetPasswordModal';
 import { ScheduleAlbumModal } from '@/components/ScheduleAlbumModal';
 import { ScheduleListSection } from '@/components/ScheduleListSection';
 import { EditScheduleModal } from '@/components/EditScheduleModal';
 import { ScheduledAlbum } from '@/lib/services/scheduledAlbumService';
+import { getLocalDateString, formatScheduledDate } from '@/lib/dateUtils';
 import { useAdminTimeout } from '@/hooks/useAdminTimeout';
 import { toast } from 'sonner';
 
 const Admin = () => {
-  const { songs, fetchSongs, deleteSong } = useSongStore();
-  const { resetVotes } = useVotingStore();
+  const { scheduledSongs, fetchScheduledSongs, currentAlbum } = useSongStore();
+  const { resetScheduledVotes } = useVotingStore();
   const { currentUser, checkAdminStatus } = useAuthStore();
   const { scheduledAlbums, fetchScheduledAlbums } = useScheduleStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
-  const [isEditSongOpen, setIsEditSongOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduledAlbum | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const navigate = useNavigate();
+  const today = getLocalDateString();
   
   // Admin session timeout - automatically logs out after 10 minutes of inactivity
   useAdminTimeout({ enabled: isAdmin && !isCheckingAdmin });
@@ -59,16 +58,19 @@ const Admin = () => {
   }, [currentUser, checkAdminStatus]);
   
   useEffect(() => {
-    const loadSongs = async () => {
+    const loadData = async () => {
       if (!isCheckingAdmin && isAdmin) {
         setIsLoading(true);
-        await Promise.all([fetchSongs(), fetchScheduledAlbums()]);
+        await Promise.all([
+          fetchScheduledSongs(today, { force: true }), 
+          fetchScheduledAlbums()
+        ]);
         setIsLoading(false);
       }
     };
     
-    loadSongs();
-  }, [isCheckingAdmin, isAdmin, fetchSongs, fetchScheduledAlbums]);
+    loadData();
+  }, [isCheckingAdmin, isAdmin, fetchScheduledSongs, fetchScheduledAlbums, today]);
   
   if (!currentUser) {
     return <Navigate to="/login" replace />;
@@ -106,7 +108,7 @@ const Admin = () => {
   }
 
   const handleResetVotes = async () => {
-    if (window.confirm('Are you sure you want to reset all votes? This cannot be undone.')) {
+    if (window.confirm('Are you sure you want to reset all votes for today? This cannot be undone.')) {
       try {
         const adminCheck = await checkAdminStatus();
         if (!adminCheck) {
@@ -115,38 +117,14 @@ const Admin = () => {
           return;
         }
         
-        await resetVotes();
-        await fetchSongs();
-        toast.success('All votes have been reset');
+        await resetScheduledVotes(today);
+        await fetchScheduledSongs(today, { force: true });
+        toast.success('All votes for today have been reset');
       } catch (error) {
         console.error('Error resetting votes:', error);
         toast.error('Failed to reset votes');
       }
     }
-  };
-
-  const handleDeleteSong = async (songId: string) => {
-    if (window.confirm('Are you sure you want to delete this song? This cannot be undone.')) {
-      try {
-        const adminCheck = await checkAdminStatus();
-        if (!adminCheck) {
-          toast.error('Admin verification failed. Please log in again.');
-          navigate('/login');
-          return;
-        }
-        
-        await deleteSong(songId);
-        toast.success('Song deleted successfully');
-      } catch (error) {
-        console.error('Error deleting song:', error);
-        toast.error('Failed to delete song');
-      }
-    }
-  };
-  
-  const handleEditSong = (song: Song) => {
-    setSelectedSong(song);
-    setIsEditSongOpen(true);
   };
   
   return (
@@ -207,28 +185,40 @@ const Admin = () => {
           />
         </div>
         
-        {/* Manage Songs Section */}
+        {/* Today's Album Section - Read Only */}
         <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
           <div className="px-6 py-4 border-b bg-muted/40">
-            <h2 className="font-semibold">Manage Songs</h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">Today's Album</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {formatScheduledDate(today)} • {currentAlbum ? `${currentAlbum.name} by ${currentAlbum.artist}` : 'No album scheduled'}
+                </p>
+              </div>
+              {scheduledSongs.length > 0 && (
+                <span className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                  {scheduledSongs.length} tracks • Read only
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="divide-y">
             {isLoading ? (
               <div className="p-8 text-center text-muted-foreground">
-                Loading songs...
+                Loading tracks...
               </div>
-            ) : songs.length === 0 ? (
+            ) : scheduledSongs.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
-                No songs have been added yet.
+                <Music className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No album scheduled for today.</p>
+                <p className="text-sm mt-1">Use "Search Albums" or "Schedule Album" to add content.</p>
               </div>
             ) : (
-              songs.map((song) => (
-                <AdminSongRow 
-                  key={song.id} 
-                  song={song} 
-                  onDelete={() => handleDeleteSong(song.id)}
-                  onEdit={() => handleEditSong(song)}
+              scheduledSongs.map((track) => (
+                <ScheduledTrackRow 
+                  key={track.id} 
+                  track={track}
                 />
               ))
             )}
@@ -239,16 +229,7 @@ const Admin = () => {
       <AlbumSearchModal 
         isOpen={isAddSongOpen} 
         onClose={() => setIsAddSongOpen(false)} 
-        onAlbumUploaded={fetchSongs}
-      />
-      
-      <EditSongModal
-        isOpen={isEditSongOpen}
-        onClose={() => {
-          setIsEditSongOpen(false);
-          setSelectedSong(null);
-        }}
-        song={selectedSong}
+        onAlbumUploaded={() => fetchScheduledSongs(today, { force: true })}
       />
 
       <ResetPasswordModal
@@ -259,7 +240,12 @@ const Admin = () => {
       <ScheduleAlbumModal
         isOpen={isScheduleModalOpen}
         onClose={() => setIsScheduleModalOpen(false)}
-        onScheduled={fetchScheduledAlbums}
+        onScheduled={async () => {
+          await Promise.all([
+            fetchScheduledAlbums(),
+            fetchScheduledSongs(today, { force: true })
+          ]);
+        }}
       />
 
       <EditScheduleModal
@@ -269,27 +255,30 @@ const Admin = () => {
           setIsEditScheduleModalOpen(false);
           setSelectedSchedule(null);
         }}
-        onUpdated={fetchScheduledAlbums}
+        onUpdated={async () => {
+          await Promise.all([
+            fetchScheduledAlbums(),
+            fetchScheduledSongs(today, { force: true })
+          ]);
+        }}
       />
     </div>
   );
 };
 
-const AdminSongRow = ({ 
-  song, 
-  onDelete, 
-  onEdit 
-}: { 
-  song: Song, 
-  onDelete: () => void,
-  onEdit: () => void
-}) => {
+// Read-only component for displaying scheduled tracks
+const ScheduledTrackRow = ({ track }: { track: ScheduledSong }) => {
+  // Format duration
+  const duration = track.durationMs ? Math.floor(track.durationMs / 1000) : 0;
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+
   return (
     <div className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
       <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
         <img 
-          src={song.coverUrl || 'https://placehold.co/400x400/f5f5f7/1d1d1f?text=Cover'} 
-          alt={song.title}
+          src={track.artworkUrl || 'https://placehold.co/400x400/f5f5f7/1d1d1f?text=Cover'} 
+          alt={track.trackName}
           className="w-full h-full object-cover"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -298,13 +287,17 @@ const AdminSongRow = ({
         />
       </div>
       
+      <div className="flex-shrink-0 w-8 text-sm text-muted-foreground text-center">
+        {track.trackNumber}
+      </div>
+      
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium truncate">{song.title}</h3>
-        <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
+        <h3 className="font-medium truncate">{track.trackName}</h3>
+        <p className="text-sm text-muted-foreground truncate">{track.artistName}</p>
         
-        {song.songUrl && (
+        {track.spotifyUrl && (
           <a 
-            href={song.songUrl}
+            href={track.spotifyUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-primary mt-0.5 hover:underline"
@@ -314,26 +307,12 @@ const AdminSongRow = ({
         )}
       </div>
       
-      <div className="flex-shrink-0 text-sm text-muted-foreground px-3 py-1 bg-muted rounded-full">
-        {song.votes} votes
+      <div className="flex-shrink-0 text-sm text-muted-foreground">
+        {duration > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : '-'}
       </div>
       
-      <div className="flex-shrink-0 flex items-center gap-2">
-        <button 
-          onClick={onEdit}
-          className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-muted"
-          aria-label={`Edit ${song.title}`}
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-        
-        <button 
-          onClick={onDelete}
-          className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-muted"
-          aria-label={`Delete ${song.title}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+      <div className="flex-shrink-0 text-sm text-muted-foreground px-3 py-1 bg-muted rounded-full">
+        {track.votes} votes
       </div>
     </div>
   );

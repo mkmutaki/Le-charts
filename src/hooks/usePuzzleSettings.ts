@@ -176,3 +176,16 @@ export const updatePuzzleSettingsFromAlbum = async (
     return false;
   }
 };
+
+/**
+ * Update puzzle settings from a scheduled album.
+ * Called when the app loads today's scheduled album or when date changes.
+ */
+export const updatePuzzleSettingsFromScheduledAlbum = async (
+  coverUrl: string,
+  albumName: string,
+  artistName: string
+): Promise<boolean> => {
+  // Reuse the same logic as regular album upload
+  return updatePuzzleSettingsFromAlbum(coverUrl, albumName, artistName);
+};

@@ -12,7 +12,9 @@ dist
 dist-ssr
 *.local
 supabase/config.toml
+supabase/migrations
 .env
+
 
 # Editor directories and files
 .vscode/*

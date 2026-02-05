@@ -194,7 +194,7 @@ export type Database = {
           device_id: string
           id: number
           ip_address: string | null
-          song_id: number
+          song_id: number | null
           vote_date: string | null
           voted_at: string | null
           scheduled_date: string | null
@@ -204,7 +204,7 @@ export type Database = {
           device_id: string
           id?: number
           ip_address?: string | null
-          song_id?: number
+          song_id?: number | null
           vote_date?: string | null
           voted_at?: string | null
           scheduled_date?: string | null
@@ -214,7 +214,7 @@ export type Database = {
           device_id?: string
           id?: number
           ip_address?: string | null
-          song_id?: number
+          song_id?: number | null
           vote_date?: string | null
           voted_at?: string | null
           scheduled_date?: string | null

@@ -1,6 +1,6 @@
 // Service Worker for Le-Charts
-const CACHE_NAME = 'le-charts-v4';
-const RUNTIME_CACHE = 'le-charts-runtime-v4';
+const CACHE_NAME = 'le-charts-v5';
+const RUNTIME_CACHE = 'le-charts-runtime-v5';
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
@@ -12,7 +12,10 @@ const PRECACHE_ASSETS = [
 
 // Cache specific Supabase API paths
 const SUPABASE_API_CACHE_DURATION = 120 * 60 * 1000; // 120 minutes (2 hours) in milliseconds
-const SONGS_QUERY_URL = '/rest/v1/LeSongs';
+// Updated to use scheduled albums tables instead of LeSongs
+const SCHEDULED_ALBUMS_URL = '/rest/v1/scheduled_albums';
+const SCHEDULED_TRACKS_URL = '/rest/v1/scheduled_album_tracks';
+const SONG_VOTES_URL = '/rest/v1/song_votes';
 
 // Install event - precache static assets
 self.addEventListener('install', (event) => {
@@ -47,9 +50,15 @@ function isSupabaseRequest(url) {
          url.pathname.includes('/rest/v1/');
 }
 
-// Helper function to determine if a request is specifically for songs
-function isSongsRequest(url) {
-  return url.pathname.includes(SONGS_QUERY_URL);
+// Helper function to determine if a request is for scheduled albums data
+function isScheduledAlbumsRequest(url) {
+  return url.pathname.includes(SCHEDULED_ALBUMS_URL) || 
+         url.pathname.includes(SCHEDULED_TRACKS_URL);
+}
+
+// Helper function to determine if a request is for RPC functions
+function isRPCRequest(url) {
+  return url.pathname.includes('/rest/v1/rpc/');
 }
 
 // Helper to serialize headers for cache keys
@@ -93,8 +102,8 @@ self.addEventListener('fetch', (event) => {
   
   // Special handling for Supabase API requests
   if (isSupabaseRequest(url)) {
-    // For songs data, we use a cache-first strategy with time-based expiration
-    if (isSongsRequest(url)) {
+    // For scheduled albums data and RPC functions, use cache-first with time-based expiration
+    if (isScheduledAlbumsRequest(url) || isRPCRequest(url)) {
       event.respondWith(cacheThenNetworkWithExpiration(event.request));
       return;
     }
@@ -228,14 +237,17 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Function to clear the songs cache on demand
+// Function to clear the scheduled albums cache on demand
 async function clearSongsCache() {
   const cache = await caches.open(RUNTIME_CACHE);
   const keys = await cache.keys();
   
   for (const request of keys) {
     const url = new URL(request.url);
-    if (url.pathname.includes(SONGS_QUERY_URL)) {
+    // Clear both scheduled_albums and scheduled_album_tracks caches, as well as RPC functions
+    if (url.pathname.includes(SCHEDULED_ALBUMS_URL) || 
+        url.pathname.includes(SCHEDULED_TRACKS_URL) ||
+        url.pathname.includes('/rest/v1/rpc/')) {
       await cache.delete(request);
     }
   }

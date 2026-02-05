@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { supabase, hasResetToken, hasAuthToken } from '@/integrations/supabase/client';
 import { useAuthStore, useSongStore, useVotingStore } from '@/lib/store';
+import { getLocalDateString } from '@/lib/dateUtils';
 import { toast } from 'sonner';
 
 export const SupabaseListener = () => {
   const setCurrentUser = useAuthStore(state => state.setCurrentUser);
   const currentUser = useAuthStore(state => state.currentUser);
   const setSongStoreUser = useSongStore(state => state.setCurrentUser);
-  const fetchSongs = useSongStore(state => state.fetchSongs);
-  const getUserVotedSong = useVotingStore(state => state.getUserVotedSong);
+  const fetchScheduledSongs = useSongStore(state => state.fetchScheduledSongs);
+  const getUserVotedScheduledTrack = useVotingStore(state => state.getUserVotedScheduledTrack);
   const initialCheckDone = useRef(false);
   const processingRef = useRef(false);
   const fetchSongsRef = useRef(false);
@@ -60,9 +61,10 @@ export const SupabaseListener = () => {
       
       // Check if we recently fetched the voted song before making a new request
       const now = Date.now();
+      const today = getLocalDateString();
       if (now - lastFetchTimestamps.current.votes > MIN_REQUEST_INTERVAL) {
         lastFetchTimestamps.current.votes = now;
-        await getUserVotedSong();
+        await getUserVotedScheduledTrack(today);
       } else {
         console.log('Skipping duplicate vote fetch - too soon since last request');
       }
@@ -73,7 +75,7 @@ export const SupabaseListener = () => {
         // Check timing for songs fetch
         if (now - lastFetchTimestamps.current.songs > MIN_REQUEST_INTERVAL) {
           lastFetchTimestamps.current.songs = now;
-          await fetchSongs();
+          await fetchScheduledSongs();
         } else {
           console.log('Skipping duplicate songs fetch - too soon since last request');
         }
@@ -119,7 +121,7 @@ export const SupabaseListener = () => {
           // Still fetch songs for the page
           if (!fetchSongsRef.current && !shouldThrottleRequest('songs')) {
             fetchSongsRef.current = true;
-            await fetchSongs();
+            await fetchScheduledSongs();
           }
           
           return;
@@ -128,15 +130,16 @@ export const SupabaseListener = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // For anonymous users, fetch voted song once if not throttled
+          // For anonymous users, fetch voted track for today if not throttled
+          const today = getLocalDateString();
           if (!shouldThrottleRequest('votes')) {
-            await getUserVotedSong();
+            await getUserVotedScheduledTrack(today);
           }
           
           // Fetch songs only once if not throttled
           if (!fetchSongsRef.current && !shouldThrottleRequest('songs')) {
             fetchSongsRef.current = true;
-            await fetchSongs();
+            await fetchScheduledSongs();
           }
           return;
         }
@@ -153,7 +156,7 @@ export const SupabaseListener = () => {
         // Fetch songs only once even if there's an error
         if (!fetchSongsRef.current && !shouldThrottleRequest('songs')) {
           fetchSongsRef.current = true;
-          await fetchSongs();
+          await fetchScheduledSongs();
         }
       }
     };
@@ -178,11 +181,12 @@ export const SupabaseListener = () => {
           setTimeout(async () => {
             if (!shouldThrottleRequest('songs')) {
               fetchSongsRef.current = true;
-              await fetchSongs();
+              await fetchScheduledSongs();
               
-              // Also fetch voted song to ensure state is updated if not throttled
+              // Also fetch voted track to ensure state is updated if not throttled
+              const today = getLocalDateString();
               if (!shouldThrottleRequest('votes')) {
-                await getUserVotedSong();
+                await getUserVotedScheduledTrack(today);
               }
             }
           }, 0);
@@ -208,7 +212,7 @@ export const SupabaseListener = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser, setSongStoreUser, fetchSongs, getUserVotedSong]);
+  }, [setCurrentUser, setSongStoreUser, fetchScheduledSongs, getUserVotedScheduledTrack]);
 
   return null;
 };

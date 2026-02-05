@@ -17,6 +17,7 @@ interface VotingState extends BaseState {
   getUserVotedSong: () => Promise<string | null>;
   getUserVotedScheduledTrack: (scheduledDate?: string) => Promise<string | null>;
   resetVotes: () => Promise<void>;
+  resetScheduledVotes: (scheduledDate: string) => Promise<void>;
   removeVoteForSong: (songId: string) => Promise<void>;
   votedSongId: string | null;
   votedScheduledTrackId: string | null;
@@ -368,6 +369,48 @@ export const useVotingStore = createBaseStore<VotingState>(
       } catch (error) {
         console.error('Error resetting votes:', error);
         toast.error('Failed to reset votes');
+      }
+    },
+    
+    /**
+     * Reset all votes for a specific scheduled date
+     * Admin only
+     */
+    resetScheduledVotes: async (scheduledDate: string) => {
+      try {
+        // Verify admin status directly from the database before proceeding
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+          id: get().currentUser?.id
+        });
+        
+        if (adminError || !isAdmin) {
+          console.error('Error verifying admin status:', adminError);
+          toast.error('Only admins can reset votes');
+          return;
+        }
+        
+        console.log('Resetting votes for scheduled date:', scheduledDate);
+        
+        // Delete all votes for the scheduled date
+        const { error: deleteError } = await supabase
+          .from('song_votes')
+          .delete()
+          .eq('scheduled_date', scheduledDate)
+          .not('scheduled_track_id', 'is', null);
+          
+        if (deleteError) throw deleteError;
+        
+        // Reset voted scheduled track in state if it's for the same date
+        const currentVoteDate = get().currentVoteDate;
+        if (currentVoteDate === scheduledDate) {
+          set({ votedScheduledTrackId: null });
+        }
+        
+        console.log('Votes reset for date:', scheduledDate);
+      } catch (error) {
+        console.error('Error resetting scheduled votes:', error);
+        toast.error('Failed to reset votes');
+        throw error;
       }
     },
   }),

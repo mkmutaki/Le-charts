@@ -1,25 +1,89 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSongStore, useVotingStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
 import { SongCard } from '@/components/SongCard';
+import { ScheduledSongCard } from '@/components/ScheduledSongCard';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { clearSongsCache } from '@/lib/serviceWorker';
+import { useDateCheck } from '@/hooks/useDateCheck';
+import { formatScheduledDate } from '@/lib/dateUtils';
+import { updatePuzzleSettingsFromScheduledAlbum } from '@/hooks/usePuzzleSettings';
 
 const Index = () => {
-  const { songs, fetchSongs, isLoading: storeLoading, currentAlbum } = useSongStore();
-  const { getUserVotedSong } = useVotingStore();
+  const { 
+    songs, 
+    scheduledSongs,
+    fetchSongs, 
+    fetchScheduledSongs,
+    isLoading: storeLoading, 
+    currentAlbum,
+    useScheduledAlbums
+  } = useSongStore();
+  const { getUserVotedSong, getUserVotedScheduledTrack } = useVotingStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const hasFetchedRef = useRef(false);
   const hasCheckedVotesRef = useRef(false);
   const refreshIntervalRef = useRef<number | null>(null);
   
-  // Songs are already sorted by votes and then by updated_at in the fetchSongs function
-  const sortedSongs = songs;
+  // Date check hook - detects midnight transition
+  const { currentDate, hasDateChanged, resetDateCheck } = useDateCheck({
+    checkInterval: 60000, // Check every minute
+    onDateChange: async (newDate, oldDate) => {
+      console.log(`Date changed from ${oldDate} to ${newDate}`);
+      toast.info('New day! Loading today\'s album...');
+      
+      // Show transition state
+      setIsTransitioning(true);
+      
+      // Fetch the new day's scheduled album
+      await handleDateChange(newDate);
+      
+      setIsTransitioning(false);
+    },
+  });
+  
+  // Handle date change - fetch new album and update puzzle
+  const handleDateChange = useCallback(async (date: string) => {
+    try {
+      // Reset vote check ref since it's a new day
+      hasCheckedVotesRef.current = false;
+      
+      // Fetch scheduled songs for the new date
+      const songs = await fetchScheduledSongs(date, { force: true });
+      
+      // Update puzzle settings if we have an album
+      if (songs.length > 0 && currentAlbum) {
+        await updatePuzzleSettingsFromScheduledAlbum(
+          songs[0].artworkUrl || '',
+          currentAlbum.name,
+          currentAlbum.artist
+        );
+      }
+      
+      // Check user's vote status for this date
+      await getUserVotedScheduledTrack(date);
+      
+    } catch (error) {
+      console.error('Error handling date change:', error);
+      toast.error('Failed to load today\'s album');
+    }
+  }, [fetchScheduledSongs, currentAlbum, getUserVotedScheduledTrack]);
+  
+  // Reset date change flag after handling
+  useEffect(() => {
+    if (hasDateChanged) {
+      resetDateCheck();
+    }
+  }, [hasDateChanged, resetDateCheck]);
+  
+  // Determine which songs to display based on mode
+  const displaySongs = useScheduledAlbums ? scheduledSongs : songs;
   
   // Function to handle manual refresh
   const handleManualRefresh = async () => {
@@ -30,11 +94,14 @@ const Index = () => {
       // Show loading state
       setIsLoading(true);
       
-      // Fetch fresh data
-  await fetchSongs({ force: true });
-      
-      // Check for user votes
-      await getUserVotedSong();
+      // Fetch fresh data based on mode
+      if (useScheduledAlbums) {
+        await fetchScheduledSongs(currentDate, { force: true });
+        await getUserVotedScheduledTrack(currentDate);
+      } else {
+        await fetchSongs({ force: true });
+        await getUserVotedSong();
+      }
       
       toast.success('Song data refreshed');
     } catch (error) {
@@ -51,9 +118,27 @@ const Index = () => {
     
     // Only fetch if not already loaded in store
     const loadData = async () => {
-      if (songs.length === 0 && !hasFetchedRef.current) {
+      if (!hasFetchedRef.current) {
         hasFetchedRef.current = true;
-  await fetchSongs();
+        
+        if (useScheduledAlbums) {
+          // Fetch today's scheduled album
+          const songs = await fetchScheduledSongs(currentDate);
+          
+          // Update puzzle settings if we have an album
+          if (songs.length > 0) {
+            const albumInfo = useSongStore.getState().currentAlbum;
+            if (albumInfo && songs[0].artworkUrl) {
+              await updatePuzzleSettingsFromScheduledAlbum(
+                songs[0].artworkUrl,
+                albumInfo.name,
+                albumInfo.artist
+              );
+            }
+          }
+        } else {
+          await fetchSongs();
+        }
       } else {
         // If we already have songs, just update loading state
         setIsLoading(false);
@@ -62,7 +147,11 @@ const Index = () => {
       // Check for user votes once
       if (!hasCheckedVotesRef.current) {
         hasCheckedVotesRef.current = true;
-        await getUserVotedSong();
+        if (useScheduledAlbums) {
+          await getUserVotedScheduledTrack(currentDate);
+        } else {
+          await getUserVotedSong();
+        }
       }
       
       // Set page as loaded after a short delay to allow for animation
@@ -76,7 +165,11 @@ const Index = () => {
     // Set up regular refresh interval to keep vote counts in sync across devices
     if (!refreshIntervalRef.current) {
       refreshIntervalRef.current = window.setInterval(() => {
-  fetchSongs();
+        if (useScheduledAlbums) {
+          fetchScheduledSongs(currentDate);
+        } else {
+          fetchSongs();
+        }
       }, 30000); // Refresh every 30 seconds
     }
     
@@ -93,7 +186,7 @@ const Index = () => {
         refreshIntervalRef.current = null;
       }
     };
-  }, [fetchSongs, getUserVotedSong, songs.length, storeLoading]);
+  }, [fetchSongs, fetchScheduledSongs, getUserVotedSong, getUserVotedScheduledTrack, storeLoading, useScheduledAlbums, currentDate]);
   
   // Handle empty state add button - redirect to login since only admins can add songs
   const handleEmptyStateAddClick = () => {
@@ -114,10 +207,16 @@ const Index = () => {
           <div className="flex flex-row md:items-end justify-between gap-4 mb-6">
             <div>
               <h2 className=" text-3xl md:text-4xl font-bold mb-5">
-                Album - {currentAlbum ? currentAlbum.name : 'No album selected'}
+                Album - {currentAlbum ? currentAlbum.name : 'No album scheduled'}
               </h2>
               <div className='flex flex-row justify-between text-muted-foreground mt-2 md:space-x-[307px]'>
-                <p className="text-start ml-1">Vote for your favorite song</p>
+                <p className="text-start ml-1">
+                  {useScheduledAlbums && currentAlbum ? (
+                    <>Vote for your favorite song • {formatScheduledDate(currentDate)}</>
+                  ) : (
+                    'Vote for your favorite song'
+                  )}
+                </p>
               </div>
             </div>
             
@@ -126,7 +225,7 @@ const Index = () => {
               onClick={handleManualRefresh}
               className="text-sm text-primary flex items-center"
               aria-label="Refresh songs data"
-              disabled={isLoading}
+              disabled={isLoading || isTransitioning}
             >
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -138,32 +237,51 @@ const Index = () => {
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
-                className={`mr-1 ${isLoading ? 'animate-spin' : ''}`}
+                className={`mr-1 ${(isLoading || isTransitioning) ? 'animate-spin' : ''}`}
               >
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                 <path d="M3 3v5h5"/>
               </svg>
-              {isLoading ? 'Loading...' : 'Refresh'}
+              {isTransitioning ? 'Loading new day...' : isLoading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
           
           {/* Songs list */}
-          {isLoading ? (
-            <div className="flex justify-center py-12">
+          {(isLoading || isTransitioning) ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              {isTransitioning && (
+                <p className="text-sm text-muted-foreground">Loading today's album...</p>
+              )}
             </div>
-          ) : sortedSongs.length > 0 ? (
+          ) : displaySongs.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
-              {sortedSongs.map((song, index) => (
-                <SongCard 
-                  key={song.id} 
-                  song={song} 
-                  rank={index + 1} 
-                />
-              ))}
+              {useScheduledAlbums ? (
+                // Render ScheduledSongCard for scheduled albums
+                scheduledSongs.map((song, index) => (
+                  <ScheduledSongCard 
+                    key={song.id} 
+                    song={song} 
+                    rank={index + 1} 
+                  />
+                ))
+              ) : (
+                // Render SongCard for legacy songs
+                songs.map((song, index) => (
+                  <SongCard 
+                    key={song.id} 
+                    song={song} 
+                    rank={index + 1} 
+                  />
+                ))
+              )}
             </div>
           ) : (
-            <EmptyState onAddClick={handleEmptyStateAddClick} />
+            <EmptyState 
+              variant={useScheduledAlbums ? 'no-scheduled-album' : 'default'}
+              scheduledDate={currentDate}
+              onAddClick={handleEmptyStateAddClick}
+            />
           )}
         </div>
       </main>
