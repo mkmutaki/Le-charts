@@ -189,3 +189,46 @@ export const updatePuzzleSettingsFromScheduledAlbum = async (
   // Reuse the same logic as regular album upload
   return updatePuzzleSettingsFromAlbum(coverUrl, albumName, artistName);
 };
+
+/**
+ * Sync puzzle_settings to today's scheduled album using the database function.
+ * This is called when a date change is detected to ensure puzzle_settings
+ * always matches the current day's album.
+ * 
+ * This function calls the Supabase RPC function sync_puzzle_settings_to_current_date()
+ * which handles all logic server-side.
+ */
+export const syncPuzzleSettingsToCurrentDate = async (): Promise<{
+  success: boolean;
+  albumName?: string;
+  artistName?: string;
+  message?: string;
+}> => {
+  try {
+    const { data, error } = await supabase.rpc('sync_puzzle_settings_to_current_date');
+    
+    if (error) {
+      console.error('Error syncing puzzle settings to current date:', error);
+      return { success: false, message: error.message };
+    }
+    
+    if (data && data.length > 0) {
+      const result = data[0];
+      console.log('Puzzle settings synced:', result);
+      return {
+        success: result.success,
+        albumName: result.album_name,
+        artistName: result.artist_name,
+        message: result.message,
+      };
+    }
+    
+    return { success: false, message: 'No response from sync function' };
+  } catch (error) {
+    console.error('Error calling sync_puzzle_settings_to_current_date:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+};

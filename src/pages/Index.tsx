@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { clearSongsCache } from '@/lib/serviceWorker';
 import { useDateCheck } from '@/hooks/useDateCheck';
 import { formatScheduledDate } from '@/lib/dateUtils';
-import { updatePuzzleSettingsFromScheduledAlbum } from '@/hooks/usePuzzleSettings';
+import { updatePuzzleSettingsFromScheduledAlbum, syncPuzzleSettingsToCurrentDate } from '@/hooks/usePuzzleSettings';
 
 const Index = () => {
   const { 
@@ -57,7 +57,12 @@ const Index = () => {
       // Fetch scheduled songs for the new date
       const songs = await fetchScheduledSongs(date, { force: true });
       
-      // Update puzzle settings if we have an album
+      // Sync puzzle settings to current date via database function
+      // This ensures puzzle_settings is updated to today's scheduled album
+      const syncResult = await syncPuzzleSettingsToCurrentDate();
+      console.log('Puzzle settings sync result:', syncResult);
+      
+      // Also update puzzle settings locally if we have an album
       if (songs.length > 0 && currentAlbum) {
         await updatePuzzleSettingsFromScheduledAlbum(
           songs[0].artworkUrl || '',
@@ -124,6 +129,10 @@ const Index = () => {
         if (useScheduledAlbums) {
           // Fetch today's scheduled album
           const songs = await fetchScheduledSongs(currentDate);
+          
+          // Sync puzzle settings to current date on app load
+          const syncResult = await syncPuzzleSettingsToCurrentDate();
+          console.log('Initial puzzle settings sync result:', syncResult);
           
           // Update puzzle settings if we have an album
           if (songs.length > 0) {

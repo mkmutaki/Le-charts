@@ -166,6 +166,9 @@ export async function getScheduledAlbums(
 ): Promise<ScheduledAlbum[]> {
     console.log('getScheduledAlbums called with filter:', statusFilter);
   try {
+    // Refresh album statuses to ensure they reflect current date
+    await supabase.rpc('refresh_album_statuses');
+    
     let query = supabase
       .from('scheduled_albums')
       .select('*')
