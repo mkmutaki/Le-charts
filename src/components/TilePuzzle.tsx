@@ -119,7 +119,7 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
         
         if (hasWon) {
           setTimeout(() => onComplete(), 5500);
-        } else if (newMoveCount >= 70) {
+        } else if (newMoveCount >= 100) {
           // Show max moves dialog after a short delay
           setTimeout(() => {
             setHasReachedMaxMoves(true);
@@ -269,11 +269,11 @@ const TilePuzzle = ({ onComplete }: TilePuzzleProps) => {
             
             <div className={cn(
               "text-lg font-medium",
-              gameState.moveCount >= 55 && gameState.moveCount < 70 && "text-orange-600",
-              gameState.moveCount >= 70 && "text-red-600"
+              gameState.moveCount >= 80 && gameState.moveCount < 100 && "text-orange-600",
+              gameState.moveCount >= 100 && "text-red-600"
             )}>
               Moves: <span className="font-bold">{gameState.moveCount}</span>
-              <span className="text-sm text-muted-foreground ml-1">/70</span>
+              <span className="text-sm text-muted-foreground ml-1">/100</span>
             </div>
           </div>
           

@@ -81,8 +81,10 @@ export const SupabaseListener = () => {
         }
       }
       
-      // Only show sign-in toast for explicit SIGNED_IN events
-      if (eventType === 'SIGNED_IN' && !isSameUser && !eventType.startsWith('INITIAL')) {
+      // Only show sign-in toast once per browser session
+      const toastKey = `signedInToastShown_${user.id}`;
+      if (eventType === 'SIGNED_IN' && !sessionStorage.getItem(toastKey)) {
+        sessionStorage.setItem(toastKey, 'true');
         toast.success('Signed in successfully');
       }
     } catch (error) {
