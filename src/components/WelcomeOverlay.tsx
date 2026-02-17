@@ -99,10 +99,13 @@ const WelcomeOverlay = ({ onDismiss, onComplete }: WelcomeOverlayProps) => {
               transition={{ delay: 0.4 }}
               className="flex flex-col sm:flex-row gap-4 mb-8"
             >
-              <motion.div>
+              <motion.div
+                animate={loginButtonState.isShaking ? shakeAnimation : {}}
+              >
                 <Button
-                  onClick={() => handleNavigate('/login')}
-                  className="px-14 py-3 text-md font-medium bg-gray-100 border-2 border-solid hover:bg-gray-800 hover:text-gray-100 text-black rounded-full transition-all duration-200 transform hover:scale-105"
+                  // onClick={() => handleNavigate('/login')}
+                  onClick={() => handleDisabledButtonClick('login')}
+                  className={`px-14 py-3 text-md font-medium bg-gray-100 border-2 border-solid hover:bg-gray-800 hover:text-gray-100 text-black rounded-full transition-all duration-200 transform hover:scale-105 ${loginButtonState.isFlashing ? 'ring-2 ring-red-500' : ''}`}
                   size="lg"
                 >
                   Log in
