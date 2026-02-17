@@ -26,12 +26,15 @@ const MIN_FETCH_INTERVAL = 30000; // 30 seconds
 interface ScheduleState extends BaseState {
   // State
   scheduledAlbums: ScheduledAlbum[];
+  completedAlbums: ScheduledAlbum[];
   todayAlbum: ScheduledAlbumWithTracks | null;
   isLoading: boolean;
+  isLoadingCompleted: boolean;
   error: string | null;
   
   // Actions
   fetchScheduledAlbums: (options?: { force?: boolean }) => Promise<void>;
+  fetchCompletedAlbums: (options?: { force?: boolean }) => Promise<void>;
   fetchTodayAlbum: (options?: { force?: boolean }) => Promise<ScheduledAlbumWithTracks | null>;
   scheduleAlbum: (
     albumData: ScheduleAlbumData,
@@ -45,11 +48,16 @@ interface ScheduleState extends BaseState {
   clearTodayAlbum: () => void;
 }
 
+// Track fetch timestamps for completed albums
+const lastCompletedFetchTimestamp = { current: 0 };
+
 export const useScheduleStore = createBaseStore<ScheduleState>(
   (set, get) => ({
     scheduledAlbums: [],
+    completedAlbums: [],
     todayAlbum: null,
     isLoading: false,
+    isLoadingCompleted: false,
     error: null,
     
     fetchScheduledAlbums: async (options = {}) => {
@@ -95,6 +103,48 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
         set({ 
           error: error instanceof Error ? error.message : 'Failed to fetch scheduled albums',
           isLoading: false 
+        });
+      }
+    },
+    
+    fetchCompletedAlbums: async (options = {}) => {
+      const { force = false } = options;
+      
+      // Throttle requests unless forced
+      const now = Date.now();
+      if (!force && now - lastCompletedFetchTimestamp.current < MIN_FETCH_INTERVAL) {
+        console.log('Skipping fetchCompletedAlbums - too soon since last fetch');
+        return;
+      }
+      lastCompletedFetchTimestamp.current = now;
+
+      const currentUser = useAuthStore.getState().currentUser;
+      if (!currentUser?.id) {
+        console.log('No current user, skipping fetchCompletedAlbums');
+        set({ completedAlbums: [], isLoadingCompleted: false });
+        return;
+      }
+      
+      set({ isLoadingCompleted: true, error: null });
+      
+      try {
+        // Verify admin status before fetching
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+          id: currentUser.id
+        });
+        
+        if (adminError || !isAdmin) {
+          set({ completedAlbums: [], isLoadingCompleted: false });
+          return;
+        }
+        
+        const albums = await getScheduledAlbumsService('completed');
+        set({ completedAlbums: albums, isLoadingCompleted: false });
+      } catch (error) {
+        console.error('Error fetching completed albums:', error);
+        set({ 
+          error: error instanceof Error ? error.message : 'Failed to fetch completed albums',
+          isLoadingCompleted: false 
         });
       }
     },

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Music, Calendar, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Music, Calendar, Pencil, Trash2, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useScheduleStore } from '@/lib/stores/useScheduleStore';
 import { ScheduledAlbum } from '@/lib/services/scheduledAlbumService';
@@ -18,15 +18,25 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+type ViewMode = 'scheduled' | 'completed';
+
 interface ScheduleListSectionProps {
   onEditSchedule?: (schedule: ScheduledAlbum) => void;
 }
 
 export const ScheduleListSection = ({ onEditSchedule }: ScheduleListSectionProps) => {
-  const { scheduledAlbums, isLoading, deleteSchedule } = useScheduleStore();
+  const { scheduledAlbums, completedAlbums, isLoading, isLoadingCompleted, deleteSchedule, fetchCompletedAlbums } = useScheduleStore();
   
+  const [viewMode, setViewMode] = useState<ViewMode>('scheduled');
   const [deleteTarget, setDeleteTarget] = useState<ScheduledAlbum | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Fetch completed albums when switching to that view
+  useEffect(() => {
+    if (viewMode === 'completed') {
+      fetchCompletedAlbums();
+    }
+  }, [viewMode, fetchCompletedAlbums]);
   
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -52,13 +62,55 @@ export const ScheduleListSection = ({ onEditSchedule }: ScheduleListSectionProps
   const todayAlbum = sortedAlbums.find(album => album.scheduled_date === today);
   const futureAlbums = sortedAlbums.filter(album => album.scheduled_date > today);
   
-  if (isLoading) {
+  // Sort completed albums by scheduled date (descending - most recent first)
+  const sortedCompletedAlbums = [...completedAlbums].sort((a, b) => 
+    b.scheduled_date.localeCompare(a.scheduled_date)
+  );
+  
+  const currentIsLoading = viewMode === 'scheduled' ? isLoading : isLoadingCompleted;
+  const currentAlbums = viewMode === 'scheduled' ? scheduledAlbums : completedAlbums;
+  
+  // Tab header component
+  const TabHeader = () => (
+    <div className="flex items-center gap-4">
+      <button
+        onClick={() => setViewMode('scheduled')}
+        className={cn(
+          "flex items-center gap-2 text-lg font-semibold transition-all px-3 py-1.5 rounded-lg",
+          viewMode === 'scheduled' 
+            ? "ring-2 ring-muted-foreground/50 bg-muted/30" 
+            : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        <Calendar className="h-5 w-5" />
+        Scheduled Albums
+        <Badge variant="secondary" className="ml-1">
+          {scheduledAlbums.length}
+        </Badge>
+      </button>
+      
+      <button
+        onClick={() => setViewMode('completed')}
+        className={cn(
+          "flex items-center gap-2 text-lg font-semibold transition-all px-3 py-1.5 rounded-lg",
+          viewMode === 'completed' 
+            ? "ring-2 ring-muted-foreground/50 bg-muted/30" 
+            : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        <CheckCircle2 className="h-5 w-5" />
+        Completed Albums
+        <Badge variant="secondary" className="ml-1">
+          {completedAlbums.length}
+        </Badge>
+      </button>
+    </div>
+  );
+  
+  if (currentIsLoading) {
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Scheduled Albums
-        </h3>
+        <TabHeader />
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
@@ -75,18 +127,20 @@ export const ScheduleListSection = ({ onEditSchedule }: ScheduleListSectionProps
     );
   }
   
-  if (scheduledAlbums.length === 0) {
+  if (currentAlbums.length === 0) {
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Scheduled Albums
-        </h3>
+        <TabHeader />
         <div className="flex flex-col items-center justify-center py-12 bg-muted/30 rounded-lg text-center">
           <Music className="h-12 w-12 text-muted-foreground mb-3" />
-          <p className="text-muted-foreground font-medium">No albums scheduled</p>
+          <p className="text-muted-foreground font-medium">
+            {viewMode === 'scheduled' ? 'No albums scheduled' : 'No completed albums'}
+          </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Use the "Schedule Album" button to add albums to the calendar
+            {viewMode === 'scheduled' 
+              ? 'Use the "Schedule Album" button to add albums to the calendar'
+              : 'Completed albums will appear here after their scheduled date has passed'
+            }
           </p>
         </div>
       </div>
@@ -168,49 +222,88 @@ export const ScheduleListSection = ({ onEditSchedule }: ScheduleListSectionProps
     );
   };
   
+  const renderCompletedAlbumItem = (album: ScheduledAlbum) => {
+    return (
+      <div
+        key={album.id}
+        className="flex items-center gap-4 p-4 rounded-lg bg-muted/30"
+      >
+        {/* Album cover */}
+        <div className="relative flex-shrink-0">
+          <img
+            src={album.artwork_url}
+            alt={`${album.album_name} cover`}
+            className="w-16 h-16 rounded-lg shadow-sm object-cover"
+            loading="lazy"
+          />
+          <div className="absolute -top-1 -right-1 bg-green-500 text-white text-[10px] font-bold p-1 rounded-full">
+            <CheckCircle2 className="h-3 w-3" />
+          </div>
+        </div>
+        
+        {/* Album info */}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold line-clamp-1">{album.album_name}</h4>
+          <p className="text-sm text-muted-foreground line-clamp-1">{album.artist_name}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="secondary" className="text-xs">
+              {formatScheduledDate(album.scheduled_date)}
+            </Badge>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <>
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Scheduled Albums
-          <Badge variant="secondary" className="ml-2">
-            {scheduledAlbums.length}
-          </Badge>
-        </h3>
+        <TabHeader />
         
-        {/* Today's album */}
-        {todayAlbum && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Today</h4>
-            {renderAlbumItem(todayAlbum, 'today')}
-          </div>
-        )}
-        
-        {/* Upcoming albums */}
-        {futureAlbums.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Upcoming</h4>
-            <div className="space-y-2">
-              {futureAlbums.map((album) => renderAlbumItem(album, 'future'))}
-            </div>
-          </div>
-        )}
-        
-        {/* Past albums (collapsed by default or limited) */}
-        {pastAlbums.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Past ({pastAlbums.length})
-            </h4>
-            <div className="space-y-2">
-              {pastAlbums.slice(-3).reverse().map((album) => renderAlbumItem(album, 'past'))}
-            </div>
-            {pastAlbums.length > 3 && (
-              <p className="text-xs text-muted-foreground text-center py-2">
-                Showing most recent 3 of {pastAlbums.length} past albums
-              </p>
+        {viewMode === 'scheduled' ? (
+          // Scheduled Albums View
+          <>
+            {/* Today's album */}
+            {todayAlbum && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Today</h4>
+                {renderAlbumItem(todayAlbum, 'today')}
+              </div>
             )}
+            
+            {/* Upcoming albums */}
+            {futureAlbums.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Upcoming</h4>
+                <div className="space-y-2">
+                  {futureAlbums.map((album) => renderAlbumItem(album, 'future'))}
+                </div>
+              </div>
+            )}
+            
+            {/* Past albums (collapsed by default or limited) */}
+            {pastAlbums.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                  Past ({pastAlbums.length})
+                </h4>
+                <div className="space-y-2">
+                  {pastAlbums.slice(-3).reverse().map((album) => renderAlbumItem(album, 'past'))}
+                </div>
+                {pastAlbums.length > 3 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Showing most recent 3 of {pastAlbums.length} past albums
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          // Completed Albums View
+          <div className="space-y-2">
+            <div className="space-y-2">
+              {sortedCompletedAlbums.map((album) => renderCompletedAlbumItem(album))}
+            </div>
           </div>
         )}
       </div>
