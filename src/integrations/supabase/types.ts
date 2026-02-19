@@ -62,33 +62,6 @@ export type Database = {
         }
         Relationships: []
       }
-      puzzle_settings: {
-        Row: {
-          album_artist: string | null
-          album_title: string | null
-          created_at: string
-          current_album_cover_url: string
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          album_artist?: string | null
-          album_title?: string | null
-          created_at?: string
-          current_album_cover_url: string
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          album_artist?: string | null
-          album_title?: string | null
-          created_at?: string
-          current_album_cover_url?: string
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       scheduled_albums: {
         Row: {
           id: string
@@ -98,7 +71,7 @@ export type Database = {
           artwork_url: string
           track_count: number
           scheduled_date: string
-          status: 'pending' | 'completed'
+          status: 'pending' | 'current' | 'completed'
           created_at: string
           updated_at: string
           created_by: string | null
@@ -111,7 +84,7 @@ export type Database = {
           artwork_url: string
           track_count: number
           scheduled_date: string
-          status?: 'pending' | 'completed'
+          status?: 'pending' | 'current' | 'completed'
           created_at?: string
           updated_at?: string
           created_by?: string | null
@@ -124,7 +97,7 @@ export type Database = {
           artwork_url?: string
           track_count?: number
           scheduled_date?: string
-          status?: 'pending' | 'completed'
+          status?: 'pending' | 'current' | 'completed'
           created_at?: string
           updated_at?: string
           created_by?: string | null

@@ -13,7 +13,7 @@ export interface ScheduledAlbum {
   artwork_url: string;
   track_count: number;
   scheduled_date: string;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'current' | 'completed';
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -162,21 +162,16 @@ export async function scheduleAlbum(
  * Defaults to 'pending' status
  */
 export async function getScheduledAlbums(
-  statusFilter: 'pending' | 'completed' | 'all' = 'pending'
+  statusFilter: 'pending' | 'completed' | 'all' = 'all'
 ): Promise<ScheduledAlbum[]> {
-    console.log('getScheduledAlbums called with filter:', statusFilter);
   try {
-    // Refresh album statuses to ensure they reflect current date
+    // Refresh album statuses server-side (keeps DB consistent for other consumers)
     await supabase.rpc('refresh_album_statuses');
     
-    let query = supabase
+    const query = supabase
       .from('scheduled_albums')
       .select('*')
       .order('scheduled_date', { ascending: true });
-    
-    if (statusFilter !== 'all') {
-      query = query.eq('status', statusFilter);
-    }
     
     const { data, error } = await query;
     

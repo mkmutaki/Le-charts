@@ -10,7 +10,6 @@ import {
   checkDateAvailability 
 } from '@/lib/services/scheduledAlbumService';
 import { getLocalDateString } from '@/lib/dateUtils';
-import { updatePuzzleSettingsFromAlbum } from '@/hooks/usePuzzleSettings';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -250,13 +249,6 @@ export const AlbumSearchModal = ({ isOpen, onClose, onAlbumUploaded }: AlbumSear
       }
       
       setUploadAttempted(true);
-      
-      // Update puzzle settings with the new album cover
-      await updatePuzzleSettingsFromAlbum(
-        selectedAlbum.artworkUrl600 || selectedAlbum.artworkUrl100,
-        selectedAlbum.collectionName,
-        selectedAlbum.artistName
-      );
       
       // Clear voting state for new album
       useVotingStore.setState({ 

@@ -48,9 +48,6 @@ interface ScheduleState extends BaseState {
   clearTodayAlbum: () => void;
 }
 
-// Track fetch timestamps for completed albums
-const lastCompletedFetchTimestamp = { current: 0 };
-
 export const useScheduleStore = createBaseStore<ScheduleState>(
   (set, get) => ({
     scheduledAlbums: [],
@@ -71,14 +68,12 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
       }
       lastFetchTimestamp.current = now;
 
-      // ADD THIS CHECK - Exit early if no user is logged in
-  const currentUser = useAuthStore.getState().currentUser;
-  if (!currentUser?.id) {
-    console.log(currentUser)
-    console.log('No current user, skipping fetchScheduledAlbums');
-    set({ scheduledAlbums: [], isLoading: false });
-    return;
-  }
+      const currentUser = useAuthStore.getState().currentUser;
+      if (!currentUser?.id) {
+        console.log('No current user, skipping fetchScheduledAlbums');
+        set({ scheduledAlbums: [], completedAlbums: [], isLoading: false });
+        return;
+      }
       
       set({ isLoading: true, error: null });
       
@@ -87,17 +82,20 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
         const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
           id: currentUser.id
         });
-
-        console.log
         
         if (adminError || !isAdmin) {
-          // Non-admins shouldn't see pending schedules
-          set({ scheduledAlbums: [], isLoading: false });
+          set({ scheduledAlbums: [], completedAlbums: [], isLoading: false });
           return;
         }
         
-        const albums = await getScheduledAlbumsService('pending');
-        set({ scheduledAlbums: albums, isLoading: false });
+        // Fetch ALL albums and categorize client-side using local timezone
+        const allAlbums = await getScheduledAlbumsService('all');
+        const localToday = getLocalDateString();
+        
+        const scheduled = allAlbums.filter(a => a.scheduled_date >= localToday);
+        const completed = allAlbums.filter(a => a.scheduled_date < localToday);
+        
+        set({ scheduledAlbums: scheduled, completedAlbums: completed, isLoading: false, isLoadingCompleted: false });
       } catch (error) {
         console.error('Error fetching scheduled albums:', error);
         set({ 
@@ -108,45 +106,14 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
     },
     
     fetchCompletedAlbums: async (options = {}) => {
+      // Completed albums are now populated by fetchScheduledAlbums.
+      // If they're already loaded, skip. Otherwise delegate to fetchScheduledAlbums.
       const { force = false } = options;
+      const { completedAlbums } = get();
+      if (!force && completedAlbums.length > 0) return;
       
-      // Throttle requests unless forced
-      const now = Date.now();
-      if (!force && now - lastCompletedFetchTimestamp.current < MIN_FETCH_INTERVAL) {
-        console.log('Skipping fetchCompletedAlbums - too soon since last fetch');
-        return;
-      }
-      lastCompletedFetchTimestamp.current = now;
-
-      const currentUser = useAuthStore.getState().currentUser;
-      if (!currentUser?.id) {
-        console.log('No current user, skipping fetchCompletedAlbums');
-        set({ completedAlbums: [], isLoadingCompleted: false });
-        return;
-      }
-      
-      set({ isLoadingCompleted: true, error: null });
-      
-      try {
-        // Verify admin status before fetching
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-          id: currentUser.id
-        });
-        
-        if (adminError || !isAdmin) {
-          set({ completedAlbums: [], isLoadingCompleted: false });
-          return;
-        }
-        
-        const albums = await getScheduledAlbumsService('completed');
-        set({ completedAlbums: albums, isLoadingCompleted: false });
-      } catch (error) {
-        console.error('Error fetching completed albums:', error);
-        set({ 
-          error: error instanceof Error ? error.message : 'Failed to fetch completed albums',
-          isLoadingCompleted: false 
-        });
-      }
+      // Re-use fetchScheduledAlbums which fetches all and splits by local date
+      await get().fetchScheduledAlbums({ force });
     },
     
     fetchTodayAlbum: async (options = {}) => {
