@@ -14,54 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      LeSongs: {
-        Row: {
-          album_id: string | null
-          album_name: string | null
-          artist: string | null
-          cover_url: string | null
-          created_at: string
-          id: number
-          itunes_track_id: string | null
-          song_name: string | null
-          song_url: string | null
-          track_duration_ms: number | null
-          track_number: number | null
-          updated_at: string | null
-          votes: number | null
-        }
-        Insert: {
-          album_id?: string | null
-          album_name?: string | null
-          artist?: string | null
-          cover_url?: string | null
-          created_at?: string
-          id?: number
-          itunes_track_id?: string | null
-          song_name?: string | null
-          song_url?: string | null
-          track_duration_ms?: number | null
-          track_number?: number | null
-          updated_at?: string | null
-          votes?: number | null
-        }
-        Update: {
-          album_id?: string | null
-          album_name?: string | null
-          artist?: string | null
-          cover_url?: string | null
-          created_at?: string
-          id?: number
-          itunes_track_id?: string | null
-          song_name?: string | null
-          song_url?: string | null
-          track_duration_ms?: number | null
-          track_number?: number | null
-          updated_at?: string | null
-          votes?: number | null
-        }
-        Relationships: []
-      }
       scheduled_albums: {
         Row: {
           id: string
@@ -167,7 +119,6 @@ export type Database = {
           device_id: string
           id: number
           ip_address: string | null
-          song_id: number | null
           vote_date: string | null
           voted_at: string | null
           scheduled_date: string | null
@@ -177,7 +128,6 @@ export type Database = {
           device_id: string
           id?: number
           ip_address?: string | null
-          song_id?: number | null
           vote_date?: string | null
           voted_at?: string | null
           scheduled_date?: string | null
@@ -187,20 +137,12 @@ export type Database = {
           device_id?: string
           id?: number
           ip_address?: string | null
-          song_id?: number | null
           vote_date?: string | null
           voted_at?: string | null
           scheduled_date?: string | null
           scheduled_track_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "song_votes_song_id_fkey"
-            columns: ["song_id"]
-            isOneToOne: false
-            referencedRelation: "LeSongs"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "song_votes_scheduled_track_id_fkey"
             columns: ["scheduled_track_id"]
@@ -233,10 +175,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      decrement: {
-        Args: { x: number }
-        Returns: number
-      }
       get_album_for_date: {
         Args: { target_date: string }
         Returns: Json | null
@@ -252,23 +190,12 @@ export type Database = {
           vote_count: number
         }[]
       }
-      get_song_votes: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          song_id: number
-          user_id: string
-        }[]
-      }
       is_admin: {
         Args: { id: string } | { user_id: string }
         Returns: boolean
       }
       reset_all_votes: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      vote_for_song: {
-        Args: { p_song_id: number; p_user_id: string }
         Returns: undefined
       }
     }
