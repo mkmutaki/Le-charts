@@ -2,7 +2,6 @@
 // Zustand store for managing scheduled albums
 
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
 import {
   ScheduledAlbum,
@@ -18,6 +17,7 @@ import {
 } from '../services/scheduledAlbumService';
 import { getLocalDateString } from '../dateUtils';
 import { useAuthStore } from './useAuthStore';
+import { isAdminUser } from '../services/adminService';
 
 // Track fetch timestamps to prevent duplicate requests
 const lastFetchTimestamp = { current: 0 };
@@ -78,12 +78,8 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
       set({ isLoading: true, error: null });
       
       try {
-        // Verify admin status before fetching
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-          id: currentUser.id
-        });
-        
-        if (adminError || !isAdmin) {
+        const isAdmin = await isAdminUser(currentUser.id);
+        if (!isAdmin) {
           set({ scheduledAlbums: [], completedAlbums: [], isLoading: false });
           return;
         }
@@ -158,12 +154,8 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
       toast.error(error);
       return { success: false, error };
   }
-        // Verify admin status
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-          id: currentUser.id
-        });
-        
-        if (adminError || !isAdmin) {
+        const isAdmin = await isAdminUser(currentUser.id);
+        if (!isAdmin) {
           const error = 'Only admins can schedule albums';
           toast.error(error);
           return { success: false, error };
@@ -195,12 +187,8 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
     updateScheduleDate: async (id, newDate) => {
       try {
         const currentUser = useAuthStore.getState().currentUser;
-        // Verify admin status
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-          id: currentUser?.id
-        });
-        
-        if (adminError || !isAdmin) {
+        const isAdmin = await isAdminUser(currentUser?.id);
+        if (!isAdmin) {
           const error = 'Only admins can update schedules';
           toast.error(error);
           return { success: false, error };
@@ -232,12 +220,8 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
     deleteSchedule: async (id) => {
       try {
         const currentUser = useAuthStore.getState().currentUser;
-        // Verify admin status
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-          id: currentUser?.id
-        });
-        
-        if (adminError || !isAdmin) {
+        const isAdmin = await isAdminUser(currentUser?.id);
+        if (!isAdmin) {
           const error = 'Only admins can delete schedules';
           toast.error(error);
           return { success: false, error };

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
 import { v4 as uuidv4 } from 'uuid';
 import { getLocalDateString } from '../dateUtils';
+import { isAdminUser } from '../services/adminService';
 
 // Track fetch timestamps to prevent duplicate requests
 const lastFetchTimestamps = {
@@ -179,13 +180,8 @@ export const useVotingStore = createBaseStore<VotingState>(
      */
     resetScheduledVotes: async (scheduledDate: string) => {
       try {
-        // Verify admin status directly from the database before proceeding
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-          id: get().currentUser?.id
-        });
-        
-        if (adminError || !isAdmin) {
-          console.error('Error verifying admin status:', adminError);
+        const isAdmin = await isAdminUser(get().currentUser?.id);
+        if (!isAdmin) {
           toast.error('Only admins can reset votes');
           return;
         }
