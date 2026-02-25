@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSongStore, useVotingStore } from '@/lib/store';
 import { Navbar } from '@/components/Navbar';
-import { SongCard } from '@/components/SongCard';
 import { ScheduledSongCard } from '@/components/ScheduledSongCard';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
@@ -13,15 +12,13 @@ import { formatScheduledDate } from '@/lib/dateUtils';
 
 const Index = () => {
   const { 
-    songs, 
     scheduledSongs,
-    fetchSongs, 
     fetchScheduledSongs,
     isLoading: storeLoading, 
     currentAlbum,
     useScheduledAlbums
   } = useSongStore();
-  const { getUserVotedSong, getUserVotedScheduledTrack } = useVotingStore();
+  const { getUserVotedScheduledTrack } = useVotingStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,8 +69,8 @@ const Index = () => {
     }
   }, [hasDateChanged, resetDateCheck]);
   
-  // Determine which songs to display based on mode
-  const displaySongs = useScheduledAlbums ? scheduledSongs : songs;
+  // Determine which songs to display
+  const displaySongs = scheduledSongs;
   
   // Function to handle manual refresh
   const handleManualRefresh = async () => {
@@ -84,14 +81,9 @@ const Index = () => {
       // Show loading state
       setIsLoading(true);
       
-      // Fetch fresh data based on mode
-      if (useScheduledAlbums) {
-        await fetchScheduledSongs(currentDate, { force: true });
-        await getUserVotedScheduledTrack(currentDate);
-      } else {
-        await fetchSongs({ force: true });
-        await getUserVotedSong();
-      }
+      // Fetch fresh data
+      await fetchScheduledSongs(currentDate, { force: true });
+      await getUserVotedScheduledTrack(currentDate);
       
       toast.success('Song data refreshed');
     } catch (error) {
@@ -111,12 +103,11 @@ const Index = () => {
       if (!hasFetchedRef.current) {
         hasFetchedRef.current = true;
         
-        if (useScheduledAlbums) {
-          // Fetch today's scheduled album
-          const songs = await fetchScheduledSongs(currentDate);
-        } else {
-          await fetchSongs();
-        }
+        // Always force a fresh fetch on initial page load (handles browser tab refresh)
+        clearSongsCache();
+        
+        // Fetch today's scheduled album
+        await fetchScheduledSongs(currentDate, { force: true });
       } else {
         // If we already have songs, just update loading state
         setIsLoading(false);
@@ -125,11 +116,7 @@ const Index = () => {
       // Check for user votes once
       if (!hasCheckedVotesRef.current) {
         hasCheckedVotesRef.current = true;
-        if (useScheduledAlbums) {
-          await getUserVotedScheduledTrack(currentDate);
-        } else {
-          await getUserVotedSong();
-        }
+        await getUserVotedScheduledTrack(currentDate);
       }
       
       // Set page as loaded after a short delay to allow for animation
@@ -143,11 +130,7 @@ const Index = () => {
     // Set up regular refresh interval to keep vote counts in sync across devices
     if (!refreshIntervalRef.current) {
       refreshIntervalRef.current = window.setInterval(() => {
-        if (useScheduledAlbums) {
-          fetchScheduledSongs(currentDate);
-        } else {
-          fetchSongs();
-        }
+        fetchScheduledSongs(currentDate);
       }, 30000); // Refresh every 30 seconds
     }
     
@@ -164,7 +147,7 @@ const Index = () => {
         refreshIntervalRef.current = null;
       }
     };
-  }, [fetchSongs, fetchScheduledSongs, getUserVotedSong, getUserVotedScheduledTrack, storeLoading, useScheduledAlbums, currentDate]);
+  }, [fetchScheduledSongs, getUserVotedScheduledTrack, storeLoading, useScheduledAlbums, currentDate]);
   
   // Handle empty state add button - redirect to login since only admins can add songs
   const handleEmptyStateAddClick = () => {
@@ -234,25 +217,13 @@ const Index = () => {
             </div>
           ) : displaySongs.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
-              {useScheduledAlbums ? (
-                // Render ScheduledSongCard for scheduled albums
-                scheduledSongs.map((song, index) => (
-                  <ScheduledSongCard 
-                    key={song.id} 
-                    song={song} 
-                    rank={index + 1} 
-                  />
-                ))
-              ) : (
-                // Render SongCard for legacy songs
-                songs.map((song, index) => (
-                  <SongCard 
-                    key={song.id} 
-                    song={song} 
-                    rank={index + 1} 
-                  />
-                ))
-              )}
+              {scheduledSongs.map((song, index) => (
+                <ScheduledSongCard 
+                  key={song.id} 
+                  song={song} 
+                  rank={index + 1} 
+                />
+              ))}
             </div>
           ) : (
             <EmptyState 
