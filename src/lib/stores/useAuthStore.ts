@@ -16,8 +16,6 @@ export const useAuthStore = createBaseStore<AuthState>(
       if (!currentUser) return false;
       
       try {
-        console.log("Checking admin status for user:", currentUser.id);
-
         const { isAdmin, error } = await getAdminStatus(currentUser.id);
 
         if (error) {
@@ -25,12 +23,9 @@ export const useAuthStore = createBaseStore<AuthState>(
           toast.error('Error verifying permissions');
           return false;
         }
-
-        console.log("Admin status from database:", isAdmin);
         
         // Update the user object if the admin status has changed
         if (currentUser.isAdmin !== isAdmin) {
-          console.log("Admin status changed, updating user");
           set({ 
             currentUser: { ...currentUser, isAdmin } 
           } as Partial<AuthState>);

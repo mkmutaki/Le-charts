@@ -23,6 +23,20 @@ import { isAdminUser } from '../services/adminService';
 const lastFetchTimestamp = { current: 0 };
 const MIN_FETCH_INTERVAL = 30000; // 30 seconds
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+const handleActionError = (
+  set: (partial: Partial<ScheduleState>) => void,
+  error: unknown,
+  fallback: string
+) => {
+  const errorMessage = getErrorMessage(error, fallback);
+  set({ error: errorMessage, isLoading: false });
+  toast.error(errorMessage);
+  return { success: false, error: errorMessage };
+};
+
 interface ScheduleState extends BaseState {
   // State
   scheduledAlbums: ScheduledAlbum[];
@@ -63,14 +77,12 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
       // Throttle requests unless forced
       const now = Date.now();
       if (!force && now - lastFetchTimestamp.current < MIN_FETCH_INTERVAL) {
-        console.log('Skipping fetchScheduledAlbums - too soon since last fetch');
         return;
       }
       lastFetchTimestamp.current = now;
 
       const currentUser = useAuthStore.getState().currentUser;
       if (!currentUser?.id) {
-        console.log('No current user, skipping fetchScheduledAlbums');
         set({ scheduledAlbums: [], completedAlbums: [], isLoading: false });
         return;
       }
@@ -95,7 +107,7 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
       } catch (error) {
         console.error('Error fetching scheduled albums:', error);
         set({ 
-          error: error instanceof Error ? error.message : 'Failed to fetch scheduled albums',
+          error: getErrorMessage(error, 'Failed to fetch scheduled albums'),
           isLoading: false 
         });
       }
@@ -145,15 +157,13 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
     
     scheduleAlbum: async (albumData, tracks, scheduledDate, replaceExisting = false) => {
       try {
+        const currentUser = useAuthStore.getState().currentUser;
+        if (!currentUser?.id) {
+          const error = 'You must be logged in to schedule albums';
+          toast.error(error);
+          return { success: false, error };
+        }
 
-        // ADD THIS CHECK - Exit early if no user is logged in
-  const currentUser = useAuthStore.getState().currentUser;
-  if (!currentUser?.id) {
-    console.log(currentUser)
-    const error = 'You must be logged in to schedule albums';
-      toast.error(error);
-      return { success: false, error };
-  }
         const isAdmin = await isAdminUser(currentUser.id);
         if (!isAdmin) {
           const error = 'Only admins can schedule albums';
@@ -177,17 +187,13 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
         return result;
       } catch (error) {
         console.error('Error scheduling album:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to schedule album';
-        set({ error: errorMessage, isLoading: false });
-        toast.error(errorMessage);
-        return { success: false, error: errorMessage };
+        return handleActionError(set, error, 'Failed to schedule album');
       }
     },
     
     updateScheduleDate: async (id, newDate) => {
       try {
-        const currentUser = useAuthStore.getState().currentUser;
-        const isAdmin = await isAdminUser(currentUser?.id);
+        const isAdmin = await isAdminUser(useAuthStore.getState().currentUser?.id);
         if (!isAdmin) {
           const error = 'Only admins can update schedules';
           toast.error(error);
@@ -210,17 +216,13 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
         return result;
       } catch (error) {
         console.error('Error updating schedule:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to update schedule';
-        set({ error: errorMessage, isLoading: false });
-        toast.error(errorMessage);
-        return { success: false, error: errorMessage };
+        return handleActionError(set, error, 'Failed to update schedule');
       }
     },
     
     deleteSchedule: async (id) => {
       try {
-        const currentUser = useAuthStore.getState().currentUser;
-        const isAdmin = await isAdminUser(currentUser?.id);
+        const isAdmin = await isAdminUser(useAuthStore.getState().currentUser?.id);
         if (!isAdmin) {
           const error = 'Only admins can delete schedules';
           toast.error(error);
@@ -246,10 +248,7 @@ export const useScheduleStore = createBaseStore<ScheduleState>(
         return result;
       } catch (error) {
         console.error('Error deleting schedule:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to delete schedule';
-        set({ error: errorMessage, isLoading: false });
-        toast.error(errorMessage);
-        return { success: false, error: errorMessage };
+        return handleActionError(set, error, 'Failed to delete schedule');
       }
     },
     

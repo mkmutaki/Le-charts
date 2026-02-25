@@ -3,9 +3,12 @@ import {
   checkDateAvailability,
   convertAlbumToScheduleData,
   convertTracksToScheduleData,
+  deleteScheduledAlbum,
   getAlbumForDate,
+  getScheduledAlbums,
   getScheduledTrackVotes,
   scheduleAlbum,
+  updateScheduledAlbum,
 } from './scheduledAlbumService';
 
 const { supabaseMock } = vi.hoisted(() => ({
@@ -200,6 +203,189 @@ describe('scheduledAlbumService', () => {
     await expect(checkDateAvailability('2026-02-25')).resolves.toEqual({
       id: 'album-1',
       album_name: 'Album Name',
+    });
+  });
+
+  it('refreshes statuses before reading scheduled albums', async () => {
+    const scheduledAlbumsTable = {
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: [{ id: 'album-1', scheduled_date: '2026-02-25' }],
+        error: null,
+      }),
+    };
+    supabaseMock.rpc.mockResolvedValueOnce({ data: 0, error: null });
+    supabaseMock.from.mockImplementation((table: string) =>
+      table === 'scheduled_albums' ? scheduledAlbumsTable : {}
+    );
+
+    const result = await getScheduledAlbums('all');
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith('refresh_album_statuses');
+    expect(result).toEqual([{ id: 'album-1', scheduled_date: '2026-02-25' }]);
+  });
+
+  it('deletes existing album when replaceExisting is true', async () => {
+    supabaseMock.auth.getUser.mockResolvedValueOnce({
+      data: { user: { id: 'admin-user-id' } },
+    });
+
+    const scheduledAlbumsTable = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValueOnce({
+        data: { id: 'existing-album-id', album_name: 'Old Album' },
+        error: null,
+      }),
+      delete: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: 'new-scheduled-album-id' },
+            error: null,
+          }),
+        }),
+      }),
+    };
+
+    const scheduledAlbumTracksTable = {
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    };
+
+    supabaseMock.from.mockImplementation((table: string) => {
+      if (table === 'scheduled_albums') return scheduledAlbumsTable;
+      if (table === 'scheduled_album_tracks') return scheduledAlbumTracksTable;
+      return {};
+    });
+
+    const result = await scheduleAlbum(
+      {
+        spotifyAlbumId: 'spotify-album-id',
+        albumName: 'New Album',
+        artistName: 'Artist',
+        artworkUrl: 'https://image.test/album.jpg',
+        trackCount: 1,
+      },
+      [
+        {
+          spotifyTrackId: 'spotify-track-1',
+          trackName: 'Track 1',
+          artistName: 'Artist',
+          trackNumber: 1,
+        },
+      ],
+      '2026-02-25',
+      true
+    );
+
+    expect(result).toEqual({ success: true, albumId: 'new-scheduled-album-id' });
+    expect(scheduledAlbumsTable.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('rolls back album insert when tracks insert fails', async () => {
+    supabaseMock.auth.getUser.mockResolvedValueOnce({
+      data: { user: { id: 'admin-user-id' } },
+    });
+
+    const rollbackEqMock = vi.fn().mockResolvedValue({ error: null });
+    const scheduledAlbumsTable = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValueOnce({ data: null, error: null }),
+      delete: vi.fn().mockReturnValue({
+        eq: rollbackEqMock,
+      }),
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: 'scheduled-album-id' },
+            error: null,
+          }),
+        }),
+      }),
+    };
+    const scheduledAlbumTracksTable = {
+      insert: vi.fn().mockResolvedValue({
+        error: { message: 'tracks insert failed' },
+      }),
+    };
+
+    supabaseMock.from.mockImplementation((table: string) => {
+      if (table === 'scheduled_albums') return scheduledAlbumsTable;
+      if (table === 'scheduled_album_tracks') return scheduledAlbumTracksTable;
+      return {};
+    });
+
+    const result = await scheduleAlbum(
+      {
+        spotifyAlbumId: 'spotify-album-id',
+        albumName: 'Album',
+        artistName: 'Artist',
+        artworkUrl: 'https://image.test/album.jpg',
+        trackCount: 1,
+      },
+      [
+        {
+          spotifyTrackId: 'spotify-track-1',
+          trackName: 'Track 1',
+          artistName: 'Artist',
+          trackNumber: 1,
+        },
+      ],
+      '2026-02-25'
+    );
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Failed to insert tracks: tracks insert failed',
+    });
+    expect(scheduledAlbumsTable.delete).toHaveBeenCalledTimes(1);
+    expect(rollbackEqMock).toHaveBeenCalledWith('id', 'scheduled-album-id');
+  });
+
+  it('prevents moving an album to a conflicting date during update', async () => {
+    const scheduledAlbumsTable = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValueOnce({
+        data: { id: 'album-2', album_name: 'Conflict Album' },
+        error: null,
+      }),
+    };
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      table === 'scheduled_albums' ? scheduledAlbumsTable : {}
+    );
+
+    const result = await updateScheduledAlbum('album-1', {
+      scheduled_date: '2026-02-26',
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Date 2026-02-26 already has a scheduled album: Conflict Album',
+    });
+  });
+
+  it('returns service errors from deleteScheduledAlbum', async () => {
+    const scheduledAlbumsTable = {
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockResolvedValue({
+        error: { message: 'permission denied' },
+      }),
+    };
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      table === 'scheduled_albums' ? scheduledAlbumsTable : {}
+    );
+
+    const result = await deleteScheduledAlbum('album-1');
+
+    expect(result).toEqual({
+      success: false,
+      error: 'permission denied',
     });
   });
 

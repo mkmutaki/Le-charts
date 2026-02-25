@@ -191,7 +191,7 @@ export type Database = {
         }[]
       }
       is_admin: {
-        Args: { id: string } | { user_id: string }
+        Args: { id: string }
         Returns: boolean
       }
       reset_all_votes: {

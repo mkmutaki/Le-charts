@@ -4,6 +4,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ITunesAlbum, ITunesTrack } from './spotifyService';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 // Types for scheduled albums
 export interface ScheduledAlbum {
   id: string;
@@ -102,14 +105,12 @@ export async function scheduleAlbum(
         artwork_url: albumData.artworkUrl,
         track_count: albumData.trackCount,
         scheduled_date: scheduledDate,
-        status: 'pending',
         created_by: user?.id || null,
       })
       .select()
       .single();
     
     if (albumError) {
-        console.log(user)
       console.error('Error inserting scheduled album:', albumError);
       return {
         success: false,
@@ -124,10 +125,10 @@ export async function scheduleAlbum(
       track_name: track.trackName,
       artist_name: track.artistName,
       track_number: track.trackNumber,
-      duration_ms: track.durationMs || null,
-      artwork_url: track.artworkUrl || null,
-      preview_url: track.previewUrl || null,
-      spotify_url: track.spotifyUrl || null,
+      duration_ms: track.durationMs ?? null,
+      artwork_url: track.artworkUrl ?? null,
+      preview_url: track.previewUrl ?? null,
+      spotify_url: track.spotifyUrl ?? null,
     }));
     
     const { error: tracksError } = await supabase
@@ -152,7 +153,7 @@ export async function scheduleAlbum(
     console.error('Error scheduling album:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: getErrorMessage(error, 'Unknown error occurred'),
     };
   }
 }
@@ -168,10 +169,14 @@ export async function getScheduledAlbums(
     // Refresh album statuses server-side (keeps DB consistent for other consumers)
     await supabase.rpc('refresh_album_statuses');
     
-    const query = supabase
+    let query = supabase
       .from('scheduled_albums')
       .select('*')
       .order('scheduled_date', { ascending: true });
+
+    if (statusFilter !== 'all') {
+      query = query.eq('status', statusFilter);
+    }
     
     const { data, error } = await query;
     
@@ -258,7 +263,7 @@ export async function updateScheduledAlbum(
     console.error('Error updating scheduled album:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: getErrorMessage(error, 'Unknown error occurred'),
     };
   }
 }
@@ -288,7 +293,7 @@ export async function deleteScheduledAlbum(
     console.error('Error deleting scheduled album:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: getErrorMessage(error, 'Unknown error occurred'),
     };
   }
 }
