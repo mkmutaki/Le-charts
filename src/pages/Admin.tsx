@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 
 const Admin = () => {
   const { scheduledSongs, fetchScheduledSongs, currentAlbum } = useSongStore();
-  const { resetScheduledVotes } = useVotingStore();
+  const { resetScheduledVotes, deleteScheduledTrackVotes } = useVotingStore();
   const { currentUser, checkAdminStatus } = useAuthStore();
   const { scheduledAlbums, fetchScheduledAlbums } = useScheduleStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
@@ -26,6 +26,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const [deletingTrackId, setDeletingTrackId] = useState<string | null>(null);
   const navigate = useNavigate();
   const today = getLocalDateString();
   
@@ -126,6 +127,33 @@ const Admin = () => {
       }
     }
   };
+
+  const handleDeleteTrackVotes = async (track: ScheduledSong) => {
+    if (!window.confirm(`Delete all votes for "${track.trackName}" on ${formatScheduledDate(today)}?`)) {
+      return;
+    }
+
+    try {
+      const adminCheck = await checkAdminStatus();
+      if (!adminCheck) {
+        toast.error('Admin verification failed. Please log in again.');
+        navigate('/login');
+        return;
+      }
+
+      setDeletingTrackId(track.id);
+      const success = await deleteScheduledTrackVotes(track.id, today);
+      if (!success) return;
+
+      await fetchScheduledSongs(today, { force: true });
+      toast.success(`Deleted votes for "${track.trackName}"`);
+    } catch (error) {
+      console.error('Error deleting track votes:', error);
+      toast.error('Failed to delete track votes');
+    } finally {
+      setDeletingTrackId(null);
+    }
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -219,6 +247,8 @@ const Admin = () => {
                 <ScheduledTrackRow 
                   key={track.id} 
                   track={track}
+                  isDeleting={deletingTrackId === track.id}
+                  onDeleteVotes={() => handleDeleteTrackVotes(track)}
                 />
               ))
             )}
@@ -267,7 +297,15 @@ const Admin = () => {
 };
 
 // Read-only component for displaying scheduled tracks
-const ScheduledTrackRow = ({ track }: { track: ScheduledSong }) => {
+const ScheduledTrackRow = ({
+  track,
+  onDeleteVotes,
+  isDeleting,
+}: {
+  track: ScheduledSong;
+  onDeleteVotes: () => void;
+  isDeleting: boolean;
+}) => {
   // Format duration
   const duration = track.durationMs ? Math.floor(track.durationMs / 1000) : 0;
   const minutes = Math.floor(duration / 60);
@@ -314,6 +352,16 @@ const ScheduledTrackRow = ({ track }: { track: ScheduledSong }) => {
       <div className="flex-shrink-0 text-sm text-muted-foreground px-3 py-1 bg-muted rounded-full">
         {track.votes} votes
       </div>
+
+      <button
+        onClick={onDeleteVotes}
+        disabled={isDeleting || track.votes === 0}
+        className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-destructive hover:text-destructive/80 disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label={`Delete votes for ${track.trackName}`}
+      >
+        <Trash2 className="h-4 w-4" />
+        {isDeleting ? 'Deleting...' : 'Delete votes'}
+      </button>
     </div>
   );
 };

@@ -1,9 +1,9 @@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createBaseStore, BaseState } from './useBaseStore';
-import { v4 as uuidv4 } from 'uuid';
 import { getLocalDateString } from '../dateUtils';
 import { isAdminUser } from '../services/adminService';
+import { getOrCreateDeviceId } from '../deviceId';
 
 // Track fetch timestamps to prevent duplicate requests
 const lastFetchTimestamps = {
@@ -14,24 +14,11 @@ const MIN_FETCH_INTERVAL = 120000; // 120 seconds (2 minutes)
 interface VotingState extends BaseState {
   upvoteScheduledTrack: (trackId: string, scheduledDate?: string) => Promise<boolean>;
   getUserVotedScheduledTrack: (scheduledDate?: string) => Promise<string | null>;
+  deleteScheduledTrackVotes: (trackId: string, scheduledDate: string) => Promise<boolean>;
   resetScheduledVotes: (scheduledDate: string) => Promise<void>;
   votedScheduledTrackId: string | null;
   currentVoteDate: string | null;
 }
-
-// Function to get or create a device ID
-const getDeviceId = (): string => {
-  // Check if a device ID already exists in localStorage
-  let deviceId = localStorage.getItem('device_id');
-  
-  // If not, create a new UUID and store it
-  if (!deviceId) {
-    deviceId = uuidv4();
-    localStorage.setItem('device_id', deviceId);
-  }
-  
-  return deviceId;
-};
 
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
@@ -59,7 +46,7 @@ export const useVotingStore = createBaseStore<VotingState>(
       lastFetchTimestamps.scheduledVotes = now;
       
       try {
-        const deviceId = getDeviceId();
+        const deviceId = getOrCreateDeviceId();
         
         if (!deviceId) {
           console.error('Could not determine device ID');
@@ -103,7 +90,7 @@ export const useVotingStore = createBaseStore<VotingState>(
         const targetDate = scheduledDate || getLocalDateString();
         console.log('Upvoting scheduled track:', trackId, 'for date:', targetDate);
         
-        const deviceId = getDeviceId();
+        const deviceId = getOrCreateDeviceId();
         
         if (!deviceId) {
           toast.error('Could not identify your device. Voting not possible.');
@@ -170,6 +157,41 @@ export const useVotingStore = createBaseStore<VotingState>(
       } catch (error) {
         console.error('Error voting for scheduled track:', error);
         toast.error('Failed to vote for song');
+        return false;
+      }
+    },
+
+    /**
+     * Delete all votes for a scheduled track on a given date
+     * Admin only
+     */
+    deleteScheduledTrackVotes: async (trackId: string, scheduledDate: string) => {
+      try {
+        const isAdmin = await isAdminUser(get().currentUser?.id);
+        if (!isAdmin) {
+          toast.error('Only admins can delete votes');
+          return false;
+        }
+
+        const { error } = await supabase
+          .from('song_votes')
+          .delete()
+          .eq('scheduled_date', scheduledDate)
+          .eq('scheduled_track_id', trackId);
+
+        if (error) throw error;
+
+        if (
+          get().currentVoteDate === scheduledDate &&
+          get().votedScheduledTrackId === trackId
+        ) {
+          set({ votedScheduledTrackId: null });
+        }
+
+        return true;
+      } catch (error) {
+        console.error('Error deleting track votes:', error);
+        toast.error('Failed to delete votes');
         return false;
       }
     },

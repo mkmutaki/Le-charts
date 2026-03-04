@@ -11,6 +11,12 @@ beforeAll(() => {
 
 afterEach(() => {
   server.resetHandlers();
+  vi.useRealTimers();
+  try {
+    localStorage.clear();
+  } catch {
+    // Ignore localStorage access issues in tests that stub it.
+  }
   vi.restoreAllMocks();
 });
 
