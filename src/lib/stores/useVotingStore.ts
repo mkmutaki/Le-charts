@@ -4,12 +4,14 @@ import { createBaseStore, BaseState } from './useBaseStore';
 import { getLocalDateString } from '../dateUtils';
 import { isAdminUser } from '../services/adminService';
 import { getOrCreateDeviceId } from '../deviceId';
+import { getClientFingerprint } from '../fingerprint';
 
 // Track fetch timestamps to prevent duplicate requests
 const lastFetchTimestamps = {
   scheduledVotes: 0
 };
 const MIN_FETCH_INTERVAL = 120000; // 120 seconds (2 minutes)
+const submitVoteFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-vote`;
 
 interface VotingState extends BaseState {
   upvoteScheduledTrack: (trackId: string, scheduledDate?: string) => Promise<boolean>;
@@ -19,6 +21,11 @@ interface VotingState extends BaseState {
   votedScheduledTrackId: string | null;
   currentVoteDate: string | null;
 }
+
+type SubmitVoteResponse = {
+  success: boolean;
+  reason?: 'already_voted_same_track' | 'already_voted_other_track' | 'insert_failed';
+};
 
 export const useVotingStore = createBaseStore<VotingState>(
   (set, get) => ({
@@ -109,42 +116,39 @@ export const useVotingStore = createBaseStore<VotingState>(
           }
           return false;
         }
+
+        const clientFingerprint = await getClientFingerprint();
+
+        // Run server-side dedupe and insert through Edge Function.
+        const response = await fetch(submitVoteFunctionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            trackId,
+            scheduledDate: targetDate,
+            deviceId,
+            clientFingerprint,
+          }),
+        });
         
-        // Check database for existing vote on this date
-        const { data: existingVote, error: checkError } = await supabase
-          .from('song_votes')
-          .select('scheduled_track_id')
-          .eq('device_id', deviceId)
-          .eq('scheduled_date', targetDate)
-          .not('scheduled_track_id', 'is', null)
-          .maybeSingle();
+        let submitVoteResponse: SubmitVoteResponse | null = null;
+        try {
+          submitVoteResponse = await response.json() as SubmitVoteResponse;
+        } catch {
+          submitVoteResponse = null;
+        }
         
-        if (checkError) throw checkError;
-        
-        if (existingVote) {
-          set({ 
-            votedScheduledTrackId: existingVote.scheduled_track_id,
-            currentVoteDate: targetDate 
-          });
-          
-          if (existingVote.scheduled_track_id === trackId) {
-            toast.info('You already liked this song');
-          } else {
+        if (!response.ok || !submitVoteResponse?.success) {
+          if (submitVoteResponse?.reason === 'already_voted_other_track') {
             toast.info('You can only vote for one song per day');
+          } else {
+            toast.error('Failed to vote for song');
           }
           return false;
         }
-        
-        // Insert the new vote
-        const { error } = await supabase
-          .from('song_votes')
-          .insert({
-            scheduled_track_id: trackId,
-            scheduled_date: targetDate,
-            device_id: deviceId,
-          });
-        
-        if (error) throw error;
         
         // Update local state
         set({ 

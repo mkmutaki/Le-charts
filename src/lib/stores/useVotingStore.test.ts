@@ -13,9 +13,18 @@ const { supabaseMock, toastMock, getOrCreateDeviceIdMock } = vi.hoisted(() => ({
   },
   getOrCreateDeviceIdMock: vi.fn(() => '9b2f89a8-e0fe-4fa1-b37b-f95f7ca39b8c'),
 }));
+const { getClientFingerprintMock } = vi.hoisted(() => ({
+  getClientFingerprintMock: vi.fn(
+    () => Promise.resolve('a'.repeat(64))
+  ),
+}));
 
 vi.mock('../deviceId', () => ({
   getOrCreateDeviceId: getOrCreateDeviceIdMock,
+}));
+
+vi.mock('../fingerprint', () => ({
+  getClientFingerprint: getClientFingerprintMock,
 }));
 
 vi.mock('sonner', () => ({
@@ -63,6 +72,14 @@ function createSongVotesTable(params?: {
 }
 
 let mockedNow = 1_000_000;
+
+function createFetchResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(body),
+  } as unknown as Response;
+}
 
 describe('useVotingStore.getUserVotedScheduledTrack', () => {
   beforeEach(() => {
@@ -124,8 +141,12 @@ describe('useVotingStore.getUserVotedScheduledTrack', () => {
 });
 
 describe('useVotingStore.upvoteScheduledTrack', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchMock = vi.fn().mockResolvedValue(createFetchResponse({ success: true }));
+    vi.stubGlobal('fetch', fetchMock);
     mockedNow += 300_000;
     vi.spyOn(Date, 'now').mockReturnValue(mockedNow);
     localStorage.clear();
@@ -139,12 +160,6 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
   });
 
   it('submits the vote payload with device_id, scheduled_track_id, and scheduled_date', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [{ data: null, error: null }],
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
-    );
     getOrCreateDeviceIdMock.mockReturnValueOnce('3f57f53f-5f28-4444-a71f-b8f137fdbf1f');
 
     const result = await useVotingStore
@@ -152,20 +167,42 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
       .upvoteScheduledTrack('track-1', '2026-02-25');
 
     expect(result).toBe(true);
-    expect(songVotesTable.insert).toHaveBeenCalledWith({
-      scheduled_track_id: 'track-1',
-      scheduled_date: '2026-02-25',
-      device_id: '3f57f53f-5f28-4444-a71f-b8f137fdbf1f',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://test-project.supabase.co/functions/v1/submit-vote',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-anon-key',
+        },
+        body: JSON.stringify({
+          trackId: 'track-1',
+          scheduledDate: '2026-02-25',
+          deviceId: '3f57f53f-5f28-4444-a71f-b8f137fdbf1f',
+          clientFingerprint: 'a'.repeat(64),
+        }),
+      }
+    );
+  });
+
+  it('returns false with one-song-per-day toast when edge function reports already_voted_other_track', async () => {
+    fetchMock.mockResolvedValueOnce(
+      createFetchResponse(
+        { success: false, reason: 'already_voted_other_track' },
+        409
+      )
+    );
+
+    const result = await useVotingStore
+      .getState()
+      .upvoteScheduledTrack('track-2', '2026-02-25');
+
+    expect(result).toBe(false);
+    expect(toastMock.info).toHaveBeenCalledWith('You can only vote for one song per day');
+    expect(toastMock.error).not.toHaveBeenCalled();
   });
 
   it('allows unauthenticated visitors to vote', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [{ data: null, error: null }],
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
-    );
     useVotingStore.setState({
       ...useVotingStore.getState(),
       currentUser: null,
@@ -176,17 +213,10 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
       .upvoteScheduledTrack('track-anon', '2026-02-25');
 
     expect(result).toBe(true);
-    expect(songVotesTable.insert).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('allows one vote per device/date and blocks duplicate vote before insert', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [{ data: null, error: null }],
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
-    );
-
     const firstVote = await useVotingStore
       .getState()
       .upvoteScheduledTrack('track-1', '2026-02-25');
@@ -196,39 +226,27 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
 
     expect(firstVote).toBe(true);
     expect(secondVote).toBe(false);
-    expect(songVotesTable.insert).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(toastMock.info).toHaveBeenCalledWith('You already liked this song');
   });
 
   it('blocks voting for a different track after a vote already exists for the date', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [{ data: null, error: null }],
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
-    );
-
     await useVotingStore.getState().upvoteScheduledTrack('track-1', '2026-02-25');
     const secondTrackVote = await useVotingStore
       .getState()
       .upvoteScheduledTrack('track-2', '2026-02-25');
 
     expect(secondTrackVote).toBe(false);
-    expect(songVotesTable.insert).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(toastMock.info).toHaveBeenCalledWith('You can only vote for one song per day');
   });
 
   it('rejects insert when an existing DB vote is found', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [
-        {
-          data: { scheduled_track_id: 'track-1' },
-          error: null,
-        },
-      ],
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
+    fetchMock.mockResolvedValueOnce(
+      createFetchResponse(
+        { success: false, reason: 'already_voted_same_track' },
+        409
+      )
     );
 
     const result = await useVotingStore
@@ -236,16 +254,15 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
       .upvoteScheduledTrack('track-2', '2026-02-25');
 
     expect(result).toBe(false);
-    expect(songVotesTable.insert).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('returns false when insert policy rejects invalid vote payloads', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [{ data: null, error: null }],
-      insertError: { message: 'new row violates row-level security policy' },
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
+    fetchMock.mockResolvedValueOnce(
+      createFetchResponse(
+        { success: false, reason: 'insert_failed' },
+        400
+      )
     );
 
     const result = await useVotingStore.getState().upvoteScheduledTrack('', '2026-02-25');
@@ -255,12 +272,11 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
   });
 
   it('returns false when future-date check constraint rejects the vote', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [{ data: null, error: null }],
-      insertError: { message: 'new row violates check constraint "song_votes_scheduled_date_check"' },
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
+    fetchMock.mockResolvedValueOnce(
+      createFetchResponse(
+        { success: false, reason: 'insert_failed' },
+        400
+      )
     );
 
     const result = await useVotingStore
@@ -271,16 +287,33 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
     expect(toastMock.error).toHaveBeenCalledWith('Failed to vote for song');
   });
 
-  it('permits voting again after a new device ID is issued (e.g., storage cleared)', async () => {
-    const songVotesTable = createSongVotesTable({
-      maybeSingleResults: [
-        { data: null, error: null },
-        { data: null, error: null },
-      ],
-    });
-    supabaseMock.from.mockImplementation((table: string) =>
-      table === 'song_votes' ? songVotesTable : {}
+  it('continues vote submission when fingerprint is unavailable', async () => {
+    getClientFingerprintMock.mockResolvedValueOnce(null);
+
+    const result = await useVotingStore
+      .getState()
+      .upvoteScheduledTrack('track-1', '2026-02-25');
+
+    expect(result).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://test-project.supabase.co/functions/v1/submit-vote',
+      expect.objectContaining({
+        body: JSON.stringify({
+          trackId: 'track-1',
+          scheduledDate: '2026-02-25',
+          deviceId: '9b2f89a8-e0fe-4fa1-b37b-f95f7ca39b8c',
+          clientFingerprint: null,
+        }),
+      })
     );
+  });
+
+  it('permits voting again after a new device ID is issued (e.g., storage cleared)', async () => {
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(createFetchResponse({ success: true }))
+      .mockResolvedValueOnce(createFetchResponse({ success: true }));
+
     getOrCreateDeviceIdMock
       .mockReturnValueOnce('c8853ce5-bf06-4ecf-a860-3f73f375f951')
       .mockReturnValueOnce('5a1c9820-429f-4177-9a0f-fad8f4dce4d2');
@@ -301,7 +334,7 @@ describe('useVotingStore.upvoteScheduledTrack', () => {
 
     expect(firstVote).toBe(true);
     expect(secondVote).toBe(true);
-    expect(songVotesTable.insert).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
