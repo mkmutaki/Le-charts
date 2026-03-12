@@ -4,6 +4,7 @@ import { ScheduledSong } from '@/lib/types';
 import { useVotingStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { getLocalDateString } from '@/lib/dateUtils';
+import { getWeekdayLabel } from '@/lib/weekendUtils';
 
 interface ScheduledSongCardProps {
   song: ScheduledSong;
@@ -15,6 +16,7 @@ export const ScheduledSongCard = ({ song, rank }: ScheduledSongCardProps) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(song.votes);
+  const sourceDayLabel = song.sourceDate ? getWeekdayLabel(song.sourceDate) : null;
   
   // Check if user has voted for this song
   useEffect(() => {
@@ -108,6 +110,12 @@ export const ScheduledSongCard = ({ song, rank }: ScheduledSongCardProps) => {
           <p className="text-muted-foreground text-sm md:text-base truncate mt-0.5">
             {song.artistName}
           </p>
+
+          {sourceDayLabel && (
+            <span className="inline-flex mt-1 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {sourceDayLabel}
+            </span>
+          )}
           
           <div className="flex items-center gap-2 mt-1">
             {song.durationMs && (

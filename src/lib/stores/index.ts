@@ -4,3 +4,4 @@ export * from './useSongStore';
 export * from './useAuthStore';
 export * from './useVotingStore';
 export * from './useScheduleStore';
+export * from './useWeekendStore';

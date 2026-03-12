@@ -5,7 +5,7 @@ import { Music, Moon, Sun, LayoutDashboard, LogOut, Key, Menu, HelpCircle, Troph
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/lib/store';
+import { useAuthStore, useWeekendStore } from '@/lib/store';
 import { Toggle } from './ui/toggle';
 import { ResetPasswordModal } from './ResetPasswordModal';
 import {
@@ -22,6 +22,7 @@ export const Navbar = () => {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const { currentUser, checkAdminStatus } = useAuthStore();
+  const { weeklyChampions, fetchWeeklyChampions } = useWeekendStore();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -68,6 +69,10 @@ export const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    fetchWeeklyChampions(undefined, { force: true });
+  }, [fetchWeeklyChampions]);
   
   const handleLogout = async () => {
     try {
@@ -101,9 +106,9 @@ export const Navbar = () => {
             : "bg-transparent"
         )}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
           {/* Left side - Hamburger menu and logo */}
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             {/* <button 
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
               aria-label="Menu"
@@ -118,8 +123,33 @@ export const Navbar = () => {
             {/* </Link> */}
           </div>
           
+          <div className="flex-1 min-w-0">
+            {weeklyChampions.length > 0 && (
+              <div className="flex items-center justify-center gap-2 overflow-x-auto px-1">
+                {weeklyChampions.map((champion) => (
+                  <div
+                    key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
+                    className="flex items-center gap-2 rounded-full border border-blue-400/40 bg-card/80 px-3 py-1.5 backdrop-blur-sm max-w-48"
+                    data-testid="champion-pill"
+                  >
+                    <img
+                      src={champion.artworkUrl || 'https://placehold.co/64x64/0b0b0f/f5f5f7?text=%E2%80%A2'}
+                      alt={`${champion.trackName} artwork`}
+                      className="h-8 w-8 rounded-full object-cover border border-border/70"
+                      loading="lazy"
+                    />
+                    <span className="truncate text-sm text-foreground/90" title={champion.trackName}>
+                      {champion.trackName}
+                    </span>
+                    {/* TODO Sprint 05: link to track detail */}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Right side - Icons and admin controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {/* Help, Leaderboard, Settings icons */}
             <div className="flex items-center gap-2">
               <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>

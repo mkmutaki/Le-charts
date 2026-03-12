@@ -29,6 +29,7 @@ export interface ScheduledSong {
   spotifyUrl: string | null;
   votes: number;
   scheduledDate: string;
+  sourceDate?: string;
 }
 
 export interface SongFormData {

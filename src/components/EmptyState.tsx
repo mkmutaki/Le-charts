@@ -1,7 +1,7 @@
 
 import { Music, Calendar } from 'lucide-react';
 
-type EmptyStateVariant = 'default' | 'no-scheduled-album';
+type EmptyStateVariant = 'default' | 'no-scheduled-album' | 'weekend-empty';
 
 interface EmptyStateProps {
   onAddClick?: () => void;
@@ -10,6 +10,29 @@ interface EmptyStateProps {
 }
 
 export const EmptyState = ({ onAddClick, variant = 'default', scheduledDate }: EmptyStateProps) => {
+  if (variant === 'weekend-empty') {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 md:py-24 px-4 rounded-2xl border border-dashed border-muted-foreground/30 bg-muted/20 animate-fade-in">
+        <div className="bg-muted/50 p-4 rounded-full mb-4">
+          <Calendar className="h-12 w-12 text-muted-foreground/60" />
+        </div>
+
+        <h3 className="text-xl md:text-2xl font-medium text-foreground mb-2 text-center">
+          No tracks available this weekend
+        </h3>
+
+        <p className="text-muted-foreground text-center max-w-md">
+          Weekend voting tracks will appear here once aggregation completes.
+          {scheduledDate && (
+            <span className="block mt-2 text-sm">
+              Current date: {scheduledDate}
+            </span>
+          )}
+        </p>
+      </div>
+    );
+  }
+
   if (variant === 'no-scheduled-album') {
     return (
       <div className="flex flex-col items-center justify-center py-16 md:py-24 px-4 rounded-2xl border border-dashed border-muted-foreground/30 bg-muted/20 animate-fade-in">
