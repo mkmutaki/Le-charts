@@ -36,6 +36,7 @@ type JoinedTrackRow = {
 type BracketRow = {
   source_date: string;
   day_rank: number;
+  vote_count: number;
   scheduled_album_tracks: JoinedTrackRow | JoinedTrackRow[] | null;
 };
 
@@ -169,7 +170,7 @@ export const useWeekendStore = createBaseStore<WeekendState>(
         const { data, error } = await supabase
           .from('weekend_bracket_tracks')
           .select(
-            'source_date,day_rank,scheduled_album_tracks(id,scheduled_album_id,spotify_track_id,track_name,artist_name,track_number,duration_ms,artwork_url,preview_url,spotify_url)'
+            'source_date,day_rank,vote_count,scheduled_album_tracks(id,scheduled_album_id,spotify_track_id,track_name,artist_name,track_number,duration_ms,artwork_url,preview_url,spotify_url)'
           )
           .eq('week_start_date', weekStartDate)
           .order('source_date', { ascending: true })
@@ -179,8 +180,27 @@ export const useWeekendStore = createBaseStore<WeekendState>(
 
         const voteCounts = await getScheduledTrackVotes(targetDate);
 
+        const bracketRows = (data ?? []) as unknown as BracketRow[];
+        const sortedRows = [...bracketRows].sort((a, b) => {
+          const aVoteCount = a.vote_count ?? 0;
+          const bVoteCount = b.vote_count ?? 0;
+
+          if (aVoteCount !== bVoteCount) {
+            return bVoteCount - aVoteCount;
+          }
+
+          const aTrackName =
+            unwrapJoinedTrack(a.scheduled_album_tracks)?.track_name ?? '';
+          const bTrackName =
+            unwrapJoinedTrack(b.scheduled_album_tracks)?.track_name ?? '';
+
+          return aTrackName.localeCompare(bTrackName, undefined, {
+            sensitivity: 'base',
+          });
+        });
+
         const tracks: ScheduledSong[] = [];
-        for (const row of (data ?? []) as unknown as BracketRow[]) {
+        for (const row of sortedRows) {
           const track = unwrapJoinedTrack(row.scheduled_album_tracks);
           if (!track) continue;
 

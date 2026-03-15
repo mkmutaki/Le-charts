@@ -101,6 +101,7 @@ describe('useWeekendStore', () => {
           {
             source_date: '2026-03-02',
             day_rank: 1,
+            vote_count: 8,
             scheduled_album_tracks: {
               id: 'track-1',
               scheduled_album_id: 'album-1',
@@ -130,6 +131,79 @@ describe('useWeekendStore', () => {
     expect(tracks[0].id).toBe('track-1');
     expect(tracks[0].votes).toBe(4);
     expect(tracks[0].sourceDate).toBe('2026-03-02');
+  });
+
+  it('sorts Saturday bracket tracks by vote_count desc, then track name asc for ties', async () => {
+    queueFromResults([
+      {
+        data: [
+          {
+            source_date: '2026-03-03',
+            day_rank: 2,
+            vote_count: 5,
+            scheduled_album_tracks: {
+              id: 'track-zeta',
+              scheduled_album_id: 'album-zeta',
+              spotify_track_id: 'sp-zeta',
+              track_name: 'Zeta Song',
+              artist_name: 'Artist Zeta',
+              track_number: 2,
+              duration_ms: 120000,
+              artwork_url: 'https://img/zeta',
+              preview_url: null,
+              spotify_url: null,
+            },
+          },
+          {
+            source_date: '2026-03-04',
+            day_rank: 1,
+            vote_count: 7,
+            scheduled_album_tracks: {
+              id: 'track-beta',
+              scheduled_album_id: 'album-beta',
+              spotify_track_id: 'sp-beta',
+              track_name: 'Beta Song',
+              artist_name: 'Artist Beta',
+              track_number: 1,
+              duration_ms: 110000,
+              artwork_url: 'https://img/beta',
+              preview_url: null,
+              spotify_url: null,
+            },
+          },
+          {
+            source_date: '2026-03-02',
+            day_rank: 2,
+            vote_count: 7,
+            scheduled_album_tracks: {
+              id: 'track-alpha',
+              scheduled_album_id: 'album-alpha',
+              spotify_track_id: 'sp-alpha',
+              track_name: 'Alpha Song',
+              artist_name: 'Artist Alpha',
+              track_number: 3,
+              duration_ms: 130000,
+              artwork_url: 'https://img/alpha',
+              preview_url: null,
+              spotify_url: null,
+            },
+          },
+        ],
+        error: null,
+      },
+    ]);
+
+    getScheduledTrackVotesMock.mockResolvedValueOnce(new Map<string, number>());
+
+    const tracks = await useWeekendStore
+      .getState()
+      .fetchBracketTracks('2026-03-07', { force: true });
+
+    expect(tracks.map((track) => track.trackName)).toEqual([
+      'Alpha Song',
+      'Beta Song',
+      'Zeta Song',
+    ]);
   });
 
   it('populates sundayFinalists from sunday_finalists rows', async () => {
