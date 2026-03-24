@@ -22,6 +22,7 @@ export const Navbar = () => {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isMobileHelpOpen, setIsMobileHelpOpen] = useState(false);
   const [isDesktopHelpOpen, setIsDesktopHelpOpen] = useState(false);
+  const [selectedChampionId, setSelectedChampionId] = useState<string | null>(null);
   const { currentUser, checkAdminStatus } = useAuthStore();
   const { weeklyChampions, fetchWeeklyChampions } = useWeekendStore();
   const navigate = useNavigate();
@@ -98,6 +99,7 @@ export const Navbar = () => {
   };
 
   const topSongs = weeklyChampions.slice(0, 3);
+  const selectedChampion = topSongs.find((champion) => champion.scheduledTrackId === selectedChampionId) ?? null;
   const logoSrc = isDarkMode ? '/logo.png' : '/logo-black.png';
 
   return (
@@ -133,9 +135,11 @@ export const Navbar = () => {
                   <div className="space-y-3">
                     {topSongs.length > 0 ? (
                       topSongs.map((champion, index) => (
-                        <div
+                        <button
+                          type="button"
                           key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
-                          className="flex items-center gap-3 rounded-lg border border-border/70 bg-card/70 p-2"
+                          className="flex w-full items-center gap-3 rounded-lg border border-border/70 bg-card/70 p-2 text-left transition-colors hover:bg-card"
+                          onClick={() => setSelectedChampionId(champion.scheduledTrackId)}
                         >
                           <span className="text-xs font-semibold text-muted-foreground w-4">#{index + 1}</span>
                           <img
@@ -147,7 +151,7 @@ export const Navbar = () => {
                           <span className="truncate text-sm" title={champion.trackName}>
                             {champion.trackName}
                           </span>
-                        </div>
+                        </button>
                       ))
                     ) : (
                       <p className="text-sm text-muted-foreground">No top songs available right now.</p>
@@ -243,11 +247,13 @@ export const Navbar = () => {
             <div className="flex-1 min-w-0">
               {weeklyChampions.length > 0 && (
                 <div className="flex items-center justify-center gap-2 overflow-x-auto px-1">
-                  {weeklyChampions.map((champion) => (
-                    <div
+                  {topSongs.map((champion) => (
+                    <button
+                      type="button"
                       key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
-                      className="flex items-center gap-2 rounded-full border border-blue-400/40 bg-card/80 px-3 py-1.5 backdrop-blur-sm max-w-48"
+                      className="flex items-center gap-2 rounded-full border border-blue-400/40 bg-card/80 px-3 py-1.5 backdrop-blur-sm max-w-48 transition-colors hover:bg-card"
                       data-testid="champion-pill"
+                      onClick={() => setSelectedChampionId(champion.scheduledTrackId)}
                     >
                       <img
                         src={champion.artworkUrl || 'https://placehold.co/64x64/0b0b0f/f5f5f7?text=%E2%80%A2'}
@@ -259,7 +265,7 @@ export const Navbar = () => {
                         {champion.trackName}
                       </span>
                       {/* TODO Sprint 05: link to track detail */}
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -335,6 +341,53 @@ export const Navbar = () => {
       </header>
       
       <div className="h-16" /> {/* Spacer for fixed header */}
+
+      <Dialog
+        open={Boolean(selectedChampion)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedChampionId(null);
+        }}
+      >
+        <DialogContent className="max-w-sm border border-blue-400/40 bg-card/95">
+          {selectedChampion && (
+            <div className="relative rounded-2xl bg-gradient-to-br from-card to-card/80 p-5">
+              <span className="absolute left-0 top-3 text-4xl font-light leading-none text-foreground/90">
+                {selectedChampion.finalRank}
+              </span>
+
+              <div className="flex flex-col items-center -my-5">
+                <img
+                  src={selectedChampion.artworkUrl || 'https://placehold.co/320x320/0b0b0f/f5f5f7?text=%E2%80%A2'}
+                  alt={`${selectedChampion.trackName} artwork`}
+                  className="h-48 w-48 rounded-3xl object-cover shadow-md"
+                />
+                <DialogHeader className="mt-4 items-center text-center">
+                  <DialogTitle className="max-w-[15rem] truncate text-3xl font-light">
+                    {selectedChampion.trackName}
+                  </DialogTitle>
+                </DialogHeader>
+
+                <p className="mt-1 text-sm text-muted-foreground">listen on..</p>
+
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src="/applemusic.png"
+                    alt="Apple Music"
+                    className="h-10 w-10 rounded-xl object-contain"
+                    loading="lazy"
+                  />
+                  <img
+                    src="/spotify.png"
+                    alt="Spotify"
+                    className="h-10 w-10 rounded-xl object-contain"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       
       {/* Reset Password Modal */}
       <ResetPasswordModal 
