@@ -1,26 +1,27 @@
-
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Music, Moon, Sun, LayoutDashboard, LogOut, Key, Menu, HelpCircle, Trophy, Settings, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Moon, Sun, LayoutDashboard, LogOut, Menu, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthStore, useWeekendStore } from '@/lib/store';
 import { Toggle } from './ui/toggle';
 import { ResetPasswordModal } from './ResetPasswordModal';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
 } from './ui/dialog';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isMobileHelpOpen, setIsMobileHelpOpen] = useState(false);
+  const [isDesktopHelpOpen, setIsDesktopHelpOpen] = useState(false);
   const { currentUser, checkAdminStatus } = useAuthStore();
   const { weeklyChampions, fetchWeeklyChampions } = useWeekendStore();
   const navigate = useNavigate();
@@ -96,6 +97,9 @@ export const Navbar = () => {
     setIsDarkMode(prev => !prev);
   };
 
+  const topSongs = weeklyChampions.slice(0, 3);
+  const logoSrc = isDarkMode ? '/logo.png' : '/logo-black.png';
+
   return (
     <>
       <header 
@@ -106,59 +110,106 @@ export const Navbar = () => {
             : "bg-transparent"
         )}
       >
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          {/* Left side - Hamburger menu and logo */}
-          <div className="flex items-center shrink-0">
-            {/* <button 
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button> */}
-            {/* <Link to="/" className="flex items-center gap-1"> */}
-              <img className='w-9 h-9' src="/logo.png" alt="LeCharts" />
-              <h1 className="text-xl font-semibold tracking-tight mt-1">
-                LeCharts
-              </h1>
-            {/* </Link> */}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            {weeklyChampions.length > 0 && (
-              <div className="flex items-center justify-center gap-2 overflow-x-auto px-1">
-                {weeklyChampions.map((champion) => (
-                  <div
-                    key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
-                    className="flex items-center gap-2 rounded-full border border-blue-400/40 bg-card/80 px-3 py-1.5 backdrop-blur-sm max-w-48"
-                    data-testid="champion-pill"
+        <div className="max-w-7xl mx-auto">
+          <div className="md:hidden grid grid-cols-3 items-center gap-2">
+            <div className="justify-self-start">
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="Open menu"
                   >
-                    <img
-                      src={champion.artworkUrl || 'https://placehold.co/64x64/0b0b0f/f5f5f7?text=%E2%80%A2'}
-                      alt={`${champion.trackName} artwork`}
-                      className="h-8 w-8 rounded-full object-cover border border-border/70"
-                      loading="lazy"
-                    />
-                    <span className="truncate text-sm text-foreground/90" title={champion.trackName}>
-                      {champion.trackName}
-                    </span>
-                    {/* TODO Sprint 05: link to track detail */}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                    <Menu className="h-7 w-7" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[85vw] max-w-xs px-4 py-5">
+                  <SheetHeader className="mb-4 text-left">
+                    <div className="flex gap-7 flex-col">
+                      <img className="w-9 h-9 shrink-0 items-start -translate-y-4 -translate-x-2" src={logoSrc} alt="LeCharts" />
+                      <SheetTitle className='text-center'>Last weeks winners</SheetTitle>
+                    </div>
+                  </SheetHeader>
 
-          {/* Right side - Icons and admin controls */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Help, Leaderboard, Settings icons */}
-            <div className="flex items-center gap-2">
-              <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+                  <div className="space-y-3">
+                    {topSongs.length > 0 ? (
+                      topSongs.map((champion, index) => (
+                        <div
+                          key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
+                          className="flex items-center gap-3 rounded-lg border border-border/70 bg-card/70 p-2"
+                        >
+                          <span className="text-xs font-semibold text-muted-foreground w-4">#{index + 1}</span>
+                          <img
+                            src={champion.artworkUrl || 'https://placehold.co/64x64/0b0b0f/f5f5f7?text=%E2%80%A2'}
+                            alt={`${champion.trackName} artwork`}
+                            className="h-9 w-9 rounded object-cover border border-border/70"
+                            loading="lazy"
+                          />
+                          <span className="truncate text-sm" title={champion.trackName}>
+                            {champion.trackName}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No top songs available right now.</p>
+                    )}
+
+                    <div className="pt-2 border-t border-border/70 flex items-center justify-between">
+                      <span className="text-sm font-medium">Theme</span>
+                      <Toggle
+                        pressed={isDarkMode}
+                        onPressedChange={toggleDarkMode}
+                        aria-label="Toggle dark mode"
+                        className="rounded-full p-2"
+                      >
+                        {isDarkMode ? (
+                          <Sun className="h-4 w-4" />
+                        ) : (
+                          <Moon className="h-4 w-4" />
+                        )}
+                      </Toggle>
+                    </div>
+
+                    {isAdmin && (
+                      <div className="pt-2 space-y-2">
+                        <button
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            navigate('/admin');
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                          <span>Dashboard</span>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setIsMobileMenuOpen(false);
+                            await handleLogout();
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 bg-red-100 text-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            <div className="justify-self-center flex items-center gap-1 min-w-0">
+              <h1 className="text-xl font-semibold tracking-tight mt-1">LeCharts</h1>
+            </div>
+
+            <div className="justify-self-end">
+              <Dialog open={isMobileHelpOpen} onOpenChange={setIsMobileHelpOpen}>
                 <DialogTrigger asChild>
-                  <button 
+                  <button
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    aria-label="Help"
+                    aria-label="Information"
                   >
-                    <HelpCircle className="h-5 w-5" />
+                    <HelpCircle className="h-7 w-7" />
                   </button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md text-center">
@@ -178,53 +229,104 @@ export const Navbar = () => {
                   </div>
                 </DialogContent>
               </Dialog>
-              {/* <button 
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                aria-label="Leaderboard"
-              >
-                <Trophy className="h-5 w-5" />
-              </button> */}
-              {/* <button 
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                aria-label="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </button> */}
+            </div>
+          </div>
+
+          <div className="hidden md:flex items-center gap-3">
+            <div className="flex items-center shrink-0">
+              <img className='w-9 h-9' src={logoSrc} alt="LeCharts" />
+              <h1 className="text-xl font-semibold tracking-tight mt-1">
+                LeCharts
+              </h1>
             </div>
 
-            {/* Dark mode toggle */}
-            <Toggle 
-              pressed={isDarkMode}
-              onPressedChange={toggleDarkMode}
-              aria-label="Toggle dark mode"
-              className="rounded-full p-2"
-            >
-              {isDarkMode ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
+            <div className="flex-1 min-w-0">
+              {weeklyChampions.length > 0 && (
+                <div className="flex items-center justify-center gap-2 overflow-x-auto px-1">
+                  {weeklyChampions.map((champion) => (
+                    <div
+                      key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
+                      className="flex items-center gap-2 rounded-full border border-blue-400/40 bg-card/80 px-3 py-1.5 backdrop-blur-sm max-w-48"
+                      data-testid="champion-pill"
+                    >
+                      <img
+                        src={champion.artworkUrl || 'https://placehold.co/64x64/0b0b0f/f5f5f7?text=%E2%80%A2'}
+                        alt={`${champion.trackName} artwork`}
+                        className="h-8 w-8 rounded-full object-cover border border-border/70"
+                        loading="lazy"
+                      />
+                      <span className="truncate text-sm text-foreground/90" title={champion.trackName}>
+                        {champion.trackName}
+                      </span>
+                      {/* TODO Sprint 05: link to track detail */}
+                    </div>
+                  ))}
+                </div>
               )}
-            </Toggle>
+            </div>
 
-            {isAdmin && (
-              <>
-                {/* Admin Navigation Options */}
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 bg-red-100 text-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Logout</span>
-                </button>
-              </>
-            )}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <Dialog open={isDesktopHelpOpen} onOpenChange={setIsDesktopHelpOpen}>
+                  <DialogTrigger asChild>
+                    <button
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      aria-label="Help"
+                    >
+                      <HelpCircle className="h-5 w-5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md text-center">
+                    <DialogHeader>
+                      <DialogTitle className='text-center'>How it works?</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 text-sm leading-relaxed">
+                      <p>
+                        Le Charts was conceived to give people the chance to battle out their favourite albums and songs against each other, creating new charts weekly.
+                      </p>
+                      <p>
+                        But before you vote, a puzzle awaits. Correctly rearrange the album cover in the shortest moves possible. Use the "view reference" button to see how the cover should look.
+                      </p>
+                      <p>
+                        Good luck and happy voting!
+                      </p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <Toggle
+                pressed={isDarkMode}
+                onPressedChange={toggleDarkMode}
+                aria-label="Toggle dark mode"
+                className="rounded-full p-2"
+              >
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Toggle>
+
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-1.5 bg-red-100 text-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
         
