@@ -69,7 +69,7 @@ const WelcomeOverlay = ({ onDismiss, onComplete }: WelcomeOverlayProps) => {
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="mb-3"
             >
-              <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <div className="w-24 h-24 border border-2 border-black bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
                 <img className='h-18 w-18 ml-2' src="/logo.png" alt="" />
               </div>
             </motion.div>
