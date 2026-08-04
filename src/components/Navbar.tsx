@@ -4,9 +4,12 @@ import { Moon, Sun, LayoutDashboard, LogOut, Menu, HelpCircle } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuthStore, useWeekendStore } from '@/lib/store';
+import { useAuthStore, useWeekendStore, useUIStore } from '@/lib/store';
+import { getLocalDateString, formatScheduledDate } from '@/lib/dateUtils';
+import { getWeekStartDateForLocalDate } from '@/lib/weekendUtils';
 import { Toggle } from './ui/toggle';
 import { ResetPasswordModal } from './ResetPasswordModal';
+import { HowItWorksContent } from './HowItWorksModal';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import {
   Dialog,
@@ -25,6 +28,7 @@ export const Navbar = () => {
   const [selectedChampionId, setSelectedChampionId] = useState<string | null>(null);
   const { currentUser, checkAdminStatus } = useAuthStore();
   const { weeklyChampions, fetchWeeklyChampions } = useWeekendStore();
+  const { openWelcomeOverlay } = useUIStore();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -102,6 +106,11 @@ export const Navbar = () => {
   const selectedChampion = topSongs.find((champion) => champion.scheduledTrackId === selectedChampionId) ?? null;
   const logoSrc = isDarkMode ? '/logo.png' : '/logo-black.png';
 
+  const currentWeekStart = getWeekStartDateForLocalDate(getLocalDateString());
+  const championsWeekStart = topSongs[0]?.weekStartDate ?? null;
+  const isStaleChampions = championsWeekStart !== null && championsWeekStart !== currentWeekStart;
+  const staleChampionsLabel = championsWeekStart ? formatScheduledDate(championsWeekStart) : null;
+
   return (
     <>
       <header 
@@ -129,6 +138,11 @@ export const Navbar = () => {
                     <div className="flex gap-7 flex-col">
                       <img className="w-9 h-9 shrink-0 items-start -translate-y-4 -translate-x-2" src={logoSrc} alt="LeCharts" />
                       <SheetTitle className='text-center'>Last weeks winners</SheetTitle>
+                      {isStaleChampions && (
+                        <p className="text-center text-xs text-muted-foreground -mt-5">
+                          Showing results from week of {staleChampionsLabel}
+                        </p>
+                      )}
                     </div>
                   </SheetHeader>
 
@@ -202,9 +216,14 @@ export const Navbar = () => {
               </Sheet>
             </div>
 
-            <div className="justify-self-center flex items-center gap-1 min-w-0">
+            <button
+              type="button"
+              onClick={openWelcomeOverlay}
+              className="justify-self-center flex items-center gap-1 min-w-0"
+              aria-label="Back to main menu"
+            >
               <h1 className="text-xl font-semibold tracking-tight mt-1">LeCharts</h1>
-            </div>
+            </button>
 
             <div className="justify-self-end">
               <Dialog open={isMobileHelpOpen} onOpenChange={setIsMobileHelpOpen}>
@@ -216,58 +235,57 @@ export const Navbar = () => {
                     <HelpCircle className="h-7 w-7" />
                   </button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md text-center">
-                  <DialogHeader>
-                    <DialogTitle className='text-center'>How it works?</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 text-sm leading-relaxed">
-                    <p>
-                      Le Charts was conceived to give people the chance to battle out their favourite albums and songs against each other, creating new charts weekly.
-                    </p>
-                    <p>
-                      But before you vote, a puzzle awaits. Correctly rearrange the album cover in the shortest moves possible. Use the "view reference" button to see how the cover should look.
-                    </p>
-                    <p>
-                      Good luck and happy voting!
-                    </p>
-                  </div>
+                <DialogContent className="max-w-md">
+                  <HowItWorksContent />
                 </DialogContent>
               </Dialog>
             </div>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center shrink-0">
+            <button
+              type="button"
+              onClick={openWelcomeOverlay}
+              className="flex items-center shrink-0"
+              aria-label="Back to main menu"
+            >
               <img className='w-9 h-9' src={logoSrc} alt="LeCharts" />
               <h1 className="text-xl font-semibold tracking-tight mt-1">
                 LeCharts
               </h1>
-            </div>
+            </button>
 
             <div className="flex-1 min-w-0">
               {weeklyChampions.length > 0 && (
-                <div className="flex items-center justify-center gap-2 overflow-x-auto px-1">
-                  {topSongs.map((champion) => (
-                    <button
-                      type="button"
-                      key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
-                      className="flex items-center gap-2 rounded-full border border-blue-400/40 bg-card/80 px-3 py-1.5 backdrop-blur-sm max-w-48 transition-colors hover:bg-card"
-                      data-testid="champion-pill"
-                      onClick={() => setSelectedChampionId(champion.scheduledTrackId)}
-                    >
-                      <img
-                        src={champion.artworkUrl || 'https://placehold.co/64x64/0b0b0f/f5f5f7?text=%E2%80%A2'}
-                        alt={`${champion.trackName} artwork`}
-                        className="h-8 w-8 rounded-full object-cover border border-border/70"
-                        loading="lazy"
-                      />
-                      <span className="truncate text-sm text-foreground/90" title={champion.trackName}>
-                        {champion.trackName}
-                      </span>
-                      {/* TODO Sprint 05: link to track detail */}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  {isStaleChampions && (
+                    <p className="text-center text-xs text-muted-foreground mb-1">
+                      Week of {staleChampionsLabel}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-center gap-2 overflow-x-auto px-1">
+                    {topSongs.map((champion) => (
+                      <button
+                        type="button"
+                        key={`${champion.weekStartDate}-${champion.finalRank}-${champion.scheduledTrackId}`}
+                        className="flex items-center gap-2 rounded-full border border-blue-400/40 bg-card/80 px-3 py-1.5 backdrop-blur-sm max-w-48 transition-colors hover:bg-card"
+                        data-testid="champion-pill"
+                        onClick={() => setSelectedChampionId(champion.scheduledTrackId)}
+                      >
+                        <img
+                          src={champion.artworkUrl || 'https://placehold.co/64x64/0b0b0f/f5f5f7?text=%E2%80%A2'}
+                          alt={`${champion.trackName} artwork`}
+                          className="h-8 w-8 rounded-full object-cover border border-border/70"
+                          loading="lazy"
+                        />
+                        <span className="truncate text-sm text-foreground/90" title={champion.trackName}>
+                          {champion.trackName}
+                        </span>
+                        {/* TODO Sprint 05: link to track detail */}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
@@ -282,21 +300,8 @@ export const Navbar = () => {
                       <HelpCircle className="h-5 w-5" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md text-center">
-                    <DialogHeader>
-                      <DialogTitle className='text-center'>How it works?</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 text-sm leading-relaxed">
-                      <p>
-                        Le Charts was conceived to give people the chance to battle out their favourite albums and songs against each other, creating new charts weekly.
-                      </p>
-                      <p>
-                        But before you vote, a puzzle awaits. Correctly rearrange the album cover in the shortest moves possible. Use the "view reference" button to see how the cover should look.
-                      </p>
-                      <p>
-                        Good luck and happy voting!
-                      </p>
-                    </div>
+                  <DialogContent className="max-w-md">
+                    <HowItWorksContent />
                   </DialogContent>
                 </Dialog>
               </div>
@@ -366,6 +371,12 @@ export const Navbar = () => {
                     {selectedChampion.trackName}
                   </DialogTitle>
                 </DialogHeader>
+
+                {isStaleChampions && (
+                  <p className="text-xs text-muted-foreground">
+                    Week of {staleChampionsLabel}
+                  </p>
+                )}
 
                 <p className="mt-1 text-sm text-muted-foreground">listen on..</p>
 

@@ -18,6 +18,7 @@ interface VotingState extends BaseState {
   getUserVotedScheduledTrack: (scheduledDate?: string) => Promise<string | null>;
   deleteScheduledTrackVotes: (trackId: string, scheduledDate: string) => Promise<boolean>;
   resetScheduledVotes: (scheduledDate: string) => Promise<void>;
+  addBotVotes: (trackId: string, scheduledDate: string, count: number) => Promise<boolean>;
   votedScheduledTrackId: string | null;
   currentVoteDate: string | null;
 }
@@ -234,6 +235,35 @@ export const useVotingStore = createBaseStore<VotingState>(
         console.error('Error resetting scheduled votes:', error);
         toast.error('Failed to reset votes');
         throw error;
+      }
+    },
+
+    /**
+     * Seed synthetic votes for a scheduled track (admin only)
+     * Inserted rows are tagged is_bot=true so they can be told apart from
+     * real votes later
+     */
+    addBotVotes: async (trackId: string, scheduledDate: string, count: number) => {
+      try {
+        const isAdmin = await isAdminUser(get().currentUser?.id);
+        if (!isAdmin) {
+          toast.error('Only admins can add bot votes');
+          return false;
+        }
+
+        const { error } = await supabase.rpc('add_bot_votes', {
+          p_track_id: trackId,
+          p_scheduled_date: scheduledDate,
+          p_count: count,
+        });
+
+        if (error) throw error;
+
+        return true;
+      } catch (error) {
+        console.error('Error adding bot votes:', error);
+        toast.error('Failed to add bot votes');
+        return false;
       }
     },
   }),

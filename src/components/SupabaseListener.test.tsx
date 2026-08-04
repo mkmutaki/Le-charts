@@ -12,6 +12,7 @@ const { supabaseMock, storeMocks } = vi.hoisted(() => {
     fetchScheduledSongs: vi.fn().mockResolvedValue([]),
   };
   const votingStore = {
+    setCurrentUser: vi.fn(),
     getUserVotedScheduledTrack: vi.fn().mockResolvedValue(null),
   };
 
@@ -89,6 +90,10 @@ describe('SupabaseListener', () => {
         isAdmin: true,
       });
       expect(storeMocks.songStore.setCurrentUser).toHaveBeenCalledWith({
+        id: 'user-1',
+        isAdmin: true,
+      });
+      expect(storeMocks.votingStore.setCurrentUser).toHaveBeenCalledWith({
         id: 'user-1',
         isAdmin: true,
       });

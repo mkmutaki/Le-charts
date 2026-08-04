@@ -119,6 +119,7 @@ export type Database = {
           device_id: string
           id: number
           ip_address: string | null
+          is_bot: boolean
           vote_date: string | null
           voted_at: string | null
           scheduled_date: string | null
@@ -128,6 +129,7 @@ export type Database = {
           device_id: string
           id?: number
           ip_address?: string | null
+          is_bot?: boolean
           vote_date?: string | null
           voted_at?: string | null
           scheduled_date?: string | null
@@ -137,6 +139,7 @@ export type Database = {
           device_id?: string
           id?: number
           ip_address?: string | null
+          is_bot?: boolean
           vote_date?: string | null
           voted_at?: string | null
           scheduled_date?: string | null
@@ -175,6 +178,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_bot_votes: {
+        Args: { p_track_id: string; p_scheduled_date: string; p_count: number }
+        Returns: undefined
+      }
       get_album_for_date: {
         Args: { target_date: string }
         Returns: Json | null

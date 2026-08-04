@@ -5,6 +5,7 @@ import { SupabaseListener } from './components/SupabaseListener';
 import ErrorBoundary from './components/ErrorBoundary';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/useAuthStore';
+import { useUIStore } from '@/lib/stores/useUIStore';
 import WelcomeOverlay from './components/WelcomeOverlay';
 
 // Lazy load components
@@ -45,7 +46,7 @@ const HomeRoute = ({ showPuzzle, onPuzzleComplete }: { showPuzzle: boolean; onPu
 // Main app content
 const AppContent = () => {
   const location = useLocation();
-  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(true);
+  const { showWelcomeOverlay, closeWelcomeOverlay } = useUIStore();
   const [showPuzzle, setShowPuzzle] = useState(true);
   const { currentUser } = useAuthStore();
   
@@ -65,7 +66,7 @@ const AppContent = () => {
   );
 
   const handleWelcomeOverlayDismiss = () => {
-    setShowWelcomeOverlay(false);
+    closeWelcomeOverlay();
   };
 
   const handlePuzzleComplete = () => {

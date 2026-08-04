@@ -5,3 +5,4 @@ export { useSongStore } from './stores/useSongStore';
 export { useVotingStore } from './stores/useVotingStore';
 export { useScheduleStore } from './stores/useScheduleStore';
 export { useWeekendStore } from './stores/useWeekendStore';
+export { useUIStore } from './stores/useUIStore';

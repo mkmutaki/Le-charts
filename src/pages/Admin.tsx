@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Key, Calendar, Music } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, ArrowLeft, ExternalLink, Key, Calendar, Music, Bot } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useSongStore, useVotingStore, useAuthStore, useScheduleStore } from '@/lib/store';
 import { ScheduledSong } from '@/lib/types';
@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 
 const Admin = () => {
   const { scheduledSongs, fetchScheduledSongs, currentAlbum } = useSongStore();
-  const { resetScheduledVotes, deleteScheduledTrackVotes } = useVotingStore();
+  const { resetScheduledVotes, deleteScheduledTrackVotes, addBotVotes } = useVotingStore();
   const { currentUser, checkAdminStatus } = useAuthStore();
   const { scheduledAlbums, fetchScheduledAlbums } = useScheduleStore();
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
@@ -27,6 +27,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [deletingTrackId, setDeletingTrackId] = useState<string | null>(null);
+  const [addingBotVotesTrackId, setAddingBotVotesTrackId] = useState<string | null>(null);
   const navigate = useNavigate();
   const today = getLocalDateString();
   
@@ -154,7 +155,30 @@ const Admin = () => {
       setDeletingTrackId(null);
     }
   };
-  
+
+  const handleAddBotVotes = async (track: ScheduledSong, count: number) => {
+    try {
+      const adminCheck = await checkAdminStatus();
+      if (!adminCheck) {
+        toast.error('Admin verification failed. Please log in again.');
+        navigate('/login');
+        return;
+      }
+
+      setAddingBotVotesTrackId(track.id);
+      const success = await addBotVotes(track.id, today, count);
+      if (!success) return;
+
+      await fetchScheduledSongs(today, { force: true });
+      toast.success(`Added ${count} bot vote${count === 1 ? '' : 's'} to "${track.trackName}"`);
+    } catch (error) {
+      console.error('Error adding bot votes:', error);
+      toast.error('Failed to add bot votes');
+    } finally {
+      setAddingBotVotesTrackId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card shadow-sm border-b">
@@ -244,11 +268,13 @@ const Admin = () => {
               </div>
             ) : (
               scheduledSongs.map((track) => (
-                <ScheduledTrackRow 
-                  key={track.id} 
+                <ScheduledTrackRow
+                  key={track.id}
                   track={track}
                   isDeleting={deletingTrackId === track.id}
                   onDeleteVotes={() => handleDeleteTrackVotes(track)}
+                  isAddingBotVotes={addingBotVotesTrackId === track.id}
+                  onAddBotVotes={(count) => handleAddBotVotes(track, count)}
                 />
               ))
             )}
@@ -301,11 +327,17 @@ const ScheduledTrackRow = ({
   track,
   onDeleteVotes,
   isDeleting,
+  onAddBotVotes,
+  isAddingBotVotes,
 }: {
   track: ScheduledSong;
   onDeleteVotes: () => void;
   isDeleting: boolean;
+  onAddBotVotes: (count: number) => void;
+  isAddingBotVotes: boolean;
 }) => {
+  const [botCount, setBotCount] = useState(5);
+
   // Format duration
   const duration = track.durationMs ? Math.floor(track.durationMs / 1000) : 0;
   const minutes = Math.floor(duration / 60);
@@ -351,6 +383,30 @@ const ScheduledTrackRow = ({
       
       <div className="flex-shrink-0 text-sm text-muted-foreground px-3 py-1 bg-muted rounded-full">
         {track.votes} votes
+      </div>
+
+      <div className="flex-shrink-0 flex items-center gap-1.5">
+        <input
+          type="number"
+          min={1}
+          max={500}
+          value={botCount}
+          onChange={(e) => {
+            const parsed = Number(e.target.value);
+            setBotCount(Number.isNaN(parsed) ? 1 : Math.min(500, Math.max(1, parsed)));
+          }}
+          className="w-14 text-sm border rounded-md px-2 py-1 bg-background"
+          aria-label={`Number of bot votes to add to ${track.trackName}`}
+        />
+        <button
+          onClick={() => onAddBotVotes(botCount)}
+          disabled={isAddingBotVotes}
+          className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label={`Add ${botCount} bot votes to ${track.trackName}`}
+        >
+          <Bot className="h-4 w-4" />
+          {isAddingBotVotes ? 'Adding...' : 'Add votes'}
+        </button>
       </div>
 
       <button

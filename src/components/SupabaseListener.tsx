@@ -9,6 +9,7 @@ export const SupabaseListener = () => {
   const currentUser = useAuthStore(state => state.currentUser);
   const setSongStoreUser = useSongStore(state => state.setCurrentUser);
   const fetchScheduledSongs = useSongStore(state => state.fetchScheduledSongs);
+  const setVotingStoreUser = useVotingStore(state => state.setCurrentUser);
   const getUserVotedScheduledTrack = useVotingStore(state => state.getUserVotedScheduledTrack);
   const initialCheckDone = useRef(false);
   const processingRef = useRef(false);
@@ -55,9 +56,10 @@ export const SupabaseListener = () => {
         isAdmin: Boolean(isAdmin)
       };
       
-      // Update the user in both stores
+      // Update the user in all stores that need it
       setCurrentUser(newUserState);
       setSongStoreUser(newUserState);
+      setVotingStoreUser(newUserState);
       
       // Check if we recently fetched the voted song before making a new request
       const now = Date.now();
@@ -176,6 +178,7 @@ export const SupabaseListener = () => {
           // Clear the user on sign out
           setCurrentUser(null);
           setSongStoreUser(null);
+          setVotingStoreUser(null);
           toast.info('Signed out');
           
           // Reset fetch tracker and fetch songs once after signout
@@ -214,7 +217,7 @@ export const SupabaseListener = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser, setSongStoreUser, fetchScheduledSongs, getUserVotedScheduledTrack]);
+  }, [setCurrentUser, setSongStoreUser, setVotingStoreUser, fetchScheduledSongs, getUserVotedScheduledTrack]);
 
   return null;
 };

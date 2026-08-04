@@ -2,6 +2,8 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Navbar } from './Navbar';
+import { getLocalDateString } from '@/lib/dateUtils';
+import { addDaysToLocalDate, getWeekStartDateForLocalDate } from '@/lib/weekendUtils';
 
 const navigateMock = vi.fn();
 
@@ -42,6 +44,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 vi.mock('@/lib/store', () => ({
   useAuthStore: () => authState,
   useWeekendStore: () => weekendState,
+  useUIStore: () => ({ openWelcomeOverlay: vi.fn() }),
 }));
 
 vi.mock('./ResetPasswordModal', () => ({
@@ -211,5 +214,46 @@ describe('Navbar champions', () => {
 
     expect(championImage).toBeInTheDocument();
     expect(nameElement).toHaveClass('truncate');
+  });
+
+  it('shows a stale-week label when champions fall back to an earlier week', () => {
+    const currentWeekStart = getWeekStartDateForLocalDate(getLocalDateString());
+    const staleWeekStart = addDaysToLocalDate(currentWeekStart, -14);
+
+    weekendState.weeklyChampions = [
+      {
+        weekStartDate: staleWeekStart,
+        scheduledTrackId: 'stale-1',
+        finalRank: 1,
+        voteCount: 9,
+        trackName: 'Old Winner',
+        artistName: 'Artist Old',
+        artworkUrl: 'https://img/old',
+      },
+    ];
+
+    render(<Navbar />);
+
+    expect(screen.getByText(/Week of/)).toBeInTheDocument();
+  });
+
+  it('does not show a stale-week label when champions are from the current week', () => {
+    const currentWeekStart = getWeekStartDateForLocalDate(getLocalDateString());
+
+    weekendState.weeklyChampions = [
+      {
+        weekStartDate: currentWeekStart,
+        scheduledTrackId: 'fresh-1',
+        finalRank: 1,
+        voteCount: 9,
+        trackName: 'Fresh Winner',
+        artistName: 'Artist Fresh',
+        artworkUrl: 'https://img/fresh',
+      },
+    ];
+
+    render(<Navbar />);
+
+    expect(screen.queryByText(/Week of/)).toBeNull();
   });
 });
